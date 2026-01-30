@@ -13,6 +13,7 @@ import QuikrLogsPage from './pages/QuikrLogsPage';
 import ReportsPage from './pages/ReportsPage';
 import UploadPage from './pages/UploadPage';
 import FloorMapPage from './pages/FloorMapPage';
+import EmployeesPage from './pages/EmployeesPage';
 import UserVerificationPage from './pages/UserVerificationPage';
 import UserSeatAllocationPage from './pages/UserSeatAllocationPage';
 import UsersPage from './pages/UsersPage';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/map" element={<FloorMapPage />} />
+        <Route path="/employees" element={<EmployeesPage />} />
         
         {/* New Admin Modules */}
         <Route path="/users" element={<UsersPage />} />

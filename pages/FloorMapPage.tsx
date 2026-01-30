@@ -1,623 +1,371 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import AIChatBot from '../components/AIChatBot';
-import { Workstation, User, Floor } from '../types';
-import apiService, { createWorkstation, updateWorkstation, deleteWorkstation } from '../services/apiService';
-
-
+import { Desk } from '../types';
 
 const FloorMapPage: React.FC = () => {
-  const [floors, setFloors] = useState<Floor[]>([]);
-  const [workstations, setWorkstations] = useState<Workstation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedWsId, setSelectedWsId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentSection, setCurrentSection] = useState('A');
-  const [zoom, setZoom] = useState(1);
-  const [assetsModalEmployeeId, setAssetsModalEmployeeId] = useState<string | null>(null);
-  
-  const [isWsModalOpen, setIsWsModalOpen] = useState(false);
-  const [editingWs, setEditingWs] = useState<Workstation | null>(null);
-  const [assigningWsId, setAssigningWsId] = useState<string | null>(null);
-  const [assignError, setAssignError] = useState<string | null>(null);
+    const [desks, setDesks] = useState<Desk[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [uploadResult, setUploadResult] = useState<any>(null);
+    const [selectedDesk, setSelectedDesk] = useState<Desk | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    
+    // Edit Form State
+    const [editForm, setEditForm] = useState<Partial<Desk>>({});
 
-  // Fetch floor data on component mount
-  React.useEffect(() => {
-    const fetchFloorData = async () => {
-      try {
-        setLoading(true);
-        const floorData = await apiService.getFloors();
-        setFloors(floorData);
-
-        // Flatten all workstations from all floors
-        const floorWorkstations = floorData.flatMap(floor =>
-          floor.workstations?.map(ws => ({
-            ...ws,
-            floor: floor._id,
-            location: `${floor.building} - Floor ${floor.level}`
-          })) || []
-        );
-
-        // Also fetch standalone workstations not assigned to any floor
+    const fetchDesks = async () => {
         try {
-          const allWorkstationsResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/floors/workstations`);
-          if (allWorkstationsResponse.ok) {
-            const allWorkstationsData = await allWorkstationsResponse.json();
-            const standaloneWorkstations = allWorkstationsData
-              .filter((ws: any) => !ws.floor)
-              .map((ws: any) => ({
-                ...ws,
-                location: 'Not assigned to a floor'
-              }));
-
-            setWorkstations([...floorWorkstations, ...standaloneWorkstations]);
-          } else {
-            // If the API call fails, just use floor workstations
-            setWorkstations(floorWorkstations);
-          }
-        } catch (err) {
-          // If there's an error, just use floor workstations
-          console.warn('Could not fetch standalone workstations:', err);
-          setWorkstations(floorWorkstations);
+            setLoading(true);
+            const res = await fetch('http://localhost:5000/api/desks');
+            if (res.ok) {
+                const data = await res.json();
+                setDesks(data);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
         }
-      } catch (err) {
-        setError('Failed to load floor map data');
-        console.error('Error fetching floor data:', err);
-      } finally {
-        setLoading(false);
-      }
     };
 
-    fetchFloorData();
-  }, []);
+    useEffect(() => {
+        fetchDesks();
+    }, []);
 
-  const sections = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    // Group desks by Block
+    const blocks = useMemo(() => {
+        const groups: Record<string, Desk[]> = {};
+        desks.forEach(desk => {
+            const block = desk.block || 'Unknown';
+            if (!groups[block]) groups[block] = [];
+            groups[block].push(desk);
+        });
+        // Sort blocks
+        return Object.keys(groups).sort().reduce((acc, key) => {
+            acc[key] = groups[key].sort((a, b) => a.workstationId.localeCompare(b.workstationId));
+            return acc;
+        }, {} as Record<string, Desk[]>);
+    }, [desks]);
 
-  const stats = useMemo(() => {
-    const total = workstations.length;
-    const occupied = workstations.filter(ws => ws.status === 'Occupied').length;
-    const vacant = total - occupied;
-    const percent = Math.round((occupied / total) * 100) || 0;
-    return { total, occupied, vacant, percent };
-  }, [workstations]);
+    // Derived Stats
+    const stats = useMemo(() => {
+        const total = desks.length;
+        const occupied = desks.filter(d => d.status === 'Occupied').length;
+        const empty = total - occupied;
+        return { total, occupied, empty };
+    }, [desks]);
 
-  const visibleWorkstations = useMemo(() => {
-    return workstations.filter(ws => {
-      if (searchQuery) {
-        return ws.seatNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-               ws.workstationId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-               (ws.assignedEmployeeId && ws.assignedEmployeeId.toLowerCase().includes(searchQuery.toLowerCase()));
-      }
-      return ws.floorType === currentSection;
-    });
-  }, [currentSection, searchQuery, workstations]);
-
-  const handleSaveWorkstation = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      const formData = new FormData(e.currentTarget);
-      const workstationId = formData.get('workstationId') as string;
-      const floorType = formData.get('floorType') as string;
-
-      const workstationData = {
-        workstationId,
-        seatNumber: workstationId, // Auto-set to workstationId
-        floorType,
-        status: editingWs?.status || 'Available',
-        assignedEmployeeId: editingWs?.assignedEmployeeId,
-        isActive: editingWs?.isActive ?? true
-      };
-
-      if (editingWs) {
-        await apiService.updateWorkstation(editingWs._id!, workstationData);
-      } else {
-        await apiService.createWorkstation(workstationData);
-      }
-
-      // Refresh data
-      const floorData = await apiService.getFloors();
-      setFloors(floorData);
-      const floorWorkstations = floorData.flatMap(floor =>
-        floor.workstations?.map(ws => ({
-          ...ws,
-          floor: floor._id,
-          location: `${floor.building} - Floor ${floor.level}`
-        })) || []
-      );
-
-      // Also fetch standalone workstations not assigned to any floor
-      try {
-        const allWorkstationsResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/floors/workstations`);
-        if (allWorkstationsResponse.ok) {
-          const allWorkstationsData = await allWorkstationsResponse.json();
-          const standaloneWorkstations = allWorkstationsData
-            .filter((ws: any) => !ws.floor)
-            .map((ws: any) => ({
-              ...ws,
-              location: 'Not assigned to a floor'
-            }));
-
-          setWorkstations([...floorWorkstations, ...standaloneWorkstations]);
-        } else {
-          // If the API call fails, just use floor workstations
-          setWorkstations(floorWorkstations);
-        }
-      } catch (err) {
-        // If there's an error, just use floor workstations
-        console.warn('Could not fetch standalone workstations:', err);
-        setWorkstations(floorWorkstations);
-      }
-
-      setIsWsModalOpen(false);
-      setEditingWs(null);
-    } catch (err) {
-      console.error('Error saving workstation:', err);
-      setError('Failed to save workstation');
-    }
-  };
-
-  const handleDeleteWorkstation = async (workstationId: string) => {
-    if (window.confirm(`Delete workstation ${workstationId}?`)) {
-      try {
-        const ws = workstations.find(w => w.workstationId === workstationId);
-        if (ws) {
-          await apiService.deleteWorkstation(ws._id!);
-        }
-
-        // Refresh data
-        const floorData = await apiService.getFloors();
-        setFloors(floorData);
-        const floorWorkstations = floorData.flatMap(floor =>
-          floor.workstations?.map(ws => ({
-            ...ws,
-            floor: floor._id,
-            location: `${floor.building} - Floor ${floor.level}`
-          })) || []
-        );
-
-        // Also fetch standalone workstations not assigned to any floor
-        const allWorkstationsResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/floors/workstations`);
-        const allWorkstationsData = await allWorkstationsResponse.json();
-        const standaloneWorkstations = allWorkstationsData
-          .filter((ws: any) => !ws.floor)
-          .map((ws: any) => ({
-            ...ws,
-            location: 'Not assigned to a floor'
-          }));
-
-        setWorkstations([...floorWorkstations, ...standaloneWorkstations]);
-        setSelectedWsId(null);
-      } catch (err) {
-        console.error('Error deleting workstation:', err);
-        setError('Failed to delete workstation');
-      }
-    }
-  };
-
-  const handleAssignUser = async (userId: string) => {
-    setAssignError(null);
-    if (!assigningWsId) return;
-
-    // Validation: Check if employee is already assigned elsewhere
-    const alreadyAssigned = workstations.find(ws => ws.assignedEmployeeId === userId && ws.workstationId !== assigningWsId);
-    if (alreadyAssigned) {
-      setAssignError("This employee is already assigned to another workstation.");
-      return;
-    }
-
-    try {
-      const ws = workstations.find(w => w.workstationId === assigningWsId);
-      if (ws) {
-        await apiService.updateWorkstation(ws._id!, { assignedEmployeeId: userId, status: 'Occupied' });
-
-        // Refresh data
-        const floorData = await apiService.getFloors();
-        setFloors(floorData);
-        const floorWorkstations = floorData.flatMap(floor =>
-          floor.workstations?.map(ws => ({
-            ...ws,
-            floor: floor._id,
-            location: `${floor.building} - Floor ${floor.level}`
-          })) || []
-        );
-
-        // Also fetch standalone workstations not assigned to any floor
-        const allWorkstationsResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/floors/workstations`);
-        const allWorkstationsData = await allWorkstationsResponse.json();
-        const standaloneWorkstations = allWorkstationsData
-          .filter((ws: any) => !ws.floor)
-          .map((ws: any) => ({
-            ...ws,
-            location: 'Not assigned to a floor'
-          }));
-
-        setWorkstations([...floorWorkstations, ...standaloneWorkstations]);
-      }
-    } catch (err) {
-      console.error('Error assigning user:', err);
-      setError('Failed to assign user');
-    }
-
-    setAssigningWsId(null);
-  };
-
-  const handleRelease = async (id: string) => {
-    try {
-      await updateWorkstation(id, { assignedEmployeeId: null, status: 'Available' });
-
-      // Refresh data
-      const floorData = await apiService.getFloors();
-      setFloors(floorData);
-      const allWorkstations = floorData.flatMap(floor =>
-        floor.workstations?.map(ws => ({
-          ...ws,
-          floor: floor._id,
-          location: `${floor.building} - Floor ${floor.level}`
-        })) || []
-      );
-      setWorkstations(allWorkstations);
-    } catch (err) {
-      console.error('Error releasing workstation:', err);
-      setError('Failed to release workstation');
-    }
-  };
-
-  const selectedWs = workstations.find(ws => ws.workstationId === selectedWsId);
-
-  if (loading) {
-    return (
-      <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
-        <Sidebar activeTab="map" />
-        <div className="flex flex-col flex-1 min-w-0">
-          <Header />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-slate-600 dark:text-slate-400">Loading floor map...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
-        <Sidebar activeTab="map" />
-        <div className="flex flex-col flex-1 min-w-0">
-          <Header />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-red-500 mb-4">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
-      <Sidebar activeTab="map" />
-      <div className="flex flex-col flex-1 min-w-0">
-        <Header />
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
         
-        <div className="flex flex-1 overflow-hidden">
-          {/* Management Sidebar */}
-          <aside className="w-80 bg-white dark:bg-[#1a2632] border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col gap-6 overflow-y-auto no-scrollbar shrink-0">
-            <div>
-              <div className="flex justify-between items-start mb-2">
-                <h2 className="text-2xl font-black tracking-tight">Floor Map</h2>
-                <button 
-                  onClick={() => { setEditingWs(null); setIsWsModalOpen(true); }}
-                  className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-sm"
-                  title="Add Workstation"
-                >
-                  <span className="material-symbols-outlined">add</span>
-                </button>
-              </div>
-              <p className="text-xs text-[#617589] font-bold uppercase tracking-widest">Office Seating Allocation</p>
-            </div>
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
 
-            <div className="space-y-4">
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Find seat, ID, or user..."
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
-                />
-              </div>
+        setUploadResult(null); 
+        setUploading(true);
+        try {
+            // New endpoint
+            const res = await fetch('http://localhost:5000/api/desks/bulk-upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            setUploadResult(data);
+            fetchDesks(); 
+        } catch (error) {
+            console.error(error);
+            alert('Upload failed');
+        } finally {
+            setUploading(false);
+            e.target.value = '';
+        }
+    };
 
-              {!searchQuery && (
-                <div className="grid grid-cols-4 gap-2">
-                  {sections.map(s => (
-                    <button 
-                      key={s}
-                      onClick={() => { setCurrentSection(s); setSelectedWsId(null); }}
-                      className={`py-3 rounded-xl text-xs font-black transition-all ${
-                        currentSection === s 
-                          ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105' 
-                          : 'bg-slate-50 dark:bg-slate-900 text-slate-400 hover:bg-slate-100'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+    const handleSeatClick = (desk: Desk) => {
+        setSelectedDesk(desk);
+        setEditForm({
+            status: desk.status,
+            empId: desk.empId || '',
+            userName: desk.userName || '',
+            project: desk.project || '',
+            manager: desk.manager || ''
+        });
+        setIsEditModalOpen(true);
+    };
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-gray-100 dark:border-gray-800">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Occupancy</p>
-                <p className="text-2xl font-black mt-1">{stats.percent}%</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-gray-100 dark:border-gray-800">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available</p>
-                <p className="text-2xl font-black mt-1 text-emerald-500">{stats.vacant}</p>
-              </div>
-            </div>
+    const handleSaveEdit = async () => {
+        if (!selectedDesk?._id) return;
+        
+        try {
+            const res = await fetch(`http://localhost:5000/api/desks/${selectedDesk._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm)
+            });
+            
+            if (res.ok) {
+                setIsEditModalOpen(false);
+                fetchDesks();
+            } else {
+                const err = await res.json();
+                alert(err.message || 'Failed to save changes');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error saving changes');
+        }
+    };
 
-            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-gray-800">
-              <div className="flex items-center justify-between text-xs font-bold">
-                 <div className="flex items-center gap-2"><div className="size-3 rounded bg-primary"></div><span>Occupied</span></div>
-                 <span className="text-slate-400 font-mono">{stats.occupied}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-bold">
-                 <div className="flex items-center gap-2"><div className="size-3 rounded bg-emerald-500"></div><span>Vacant</span></div>
-                 <span className="text-slate-400 font-mono">{stats.vacant}</span>
-              </div>
-            </div>
-          </aside>
-
-          {/* Map Viewer */}
-          <main className="flex-1 overflow-hidden grid-bg flex flex-col bg-slate-50 dark:bg-[#0d1117] relative">
-            <div className="absolute top-8 right-8 z-[100] flex flex-col gap-2">
-              <button onClick={() => setZoom(prev => Math.min(prev + 0.2, 2.5))} className="size-12 rounded-full bg-white dark:bg-gray-800 shadow-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white transition-all">
-                <span className="material-symbols-outlined">zoom_in</span>
-              </button>
-              <button onClick={() => setZoom(1)} className="size-12 rounded-full bg-white dark:bg-gray-800 shadow-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white transition-all text-[10px] font-black">
-                {Math.round(zoom * 100)}%
-              </button>
-              <button onClick={() => setZoom(prev => Math.max(prev - 0.2, 0.5))} className="size-12 rounded-full bg-white dark:bg-gray-800 shadow-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white transition-all">
-                <span className="material-symbols-outlined">zoom_out</span>
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-auto p-12 lg:p-20 no-scrollbar">
-              <div className="w-full max-w-[1400px] mx-auto space-y-8 origin-top transition-transform duration-300" style={{ transform: `scale(${zoom})` }}>
-                <div className="flex justify-between items-end mb-4">
-                   <div>
-                      <h1 className="text-3xl font-black tracking-tighter uppercase text-slate-400 dark:text-gray-700">
-                        {searchQuery ? `Searching for: "${searchQuery}"` : `Section ${currentSection}`}
-                      </h1>
-                      <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
-                        Showing {visibleWorkstations.length} workstations
-                      </p>
-                   </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#1a2632] rounded-[3rem] p-10 lg:p-16 border border-slate-200 dark:border-gray-800 shadow-2xl relative">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
-                    {visibleWorkstations.map((ws) => (
-                      <div 
-                        key={ws.id}
-                        onClick={() => setSelectedWsId(ws.id === selectedWsId ? null : ws.id)}
-                        className={`h-24 rounded-3xl flex flex-col items-center justify-center transition-all relative cursor-pointer hover:scale-105 active:scale-95 shadow-sm ${
-                          selectedWsId === ws.id ? 'ring-4 ring-primary ring-offset-8 dark:ring-offset-[#1a2632] z-[60] scale-110 shadow-2xl' : ''
-                        } ${
-                          ws.status === 'Occupied' ? 'bg-primary text-white shadow-primary/20' : 'bg-emerald-500 text-white shadow-emerald-500/20'
-                        }`}
-                      >
-                        <span className="material-icons-round text-lg mb-1 opacity-80">
-                          {ws.status === 'Occupied' ? 'person' : 'check_circle'}
-                        </span>
-                        <span className="text-[10px] font-black tracking-tighter uppercase whitespace-nowrap">
-                          {ws.seatNumber}
-                        </span>
-                        {ws.status === 'Occupied' && (
-                          <span className="text-[8px] font-black text-white/60 uppercase tracking-widest mt-1">
-                            ID: {ws.assignedEmployeeId}
-                          </span>
-                        )}
-
-                        {/* Station Detail Popup */}
-                        {selectedWsId === ws.id && (
-                          <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 w-80 bg-white dark:bg-[#1a2632] rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 p-8 z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 cursor-default text-left" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-start mb-6">
-                              <div>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">STATION DETAILS</p>
-                                 <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none">{ws.seatNumber}</h3>
-                                 <p className="text-[10px] font-bold text-primary font-mono mt-1">ID: {ws.id}</p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => { setEditingWs(ws); setIsWsModalOpen(true); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-slate-400 hover:text-primary transition-colors">
-                                  <span className="material-symbols-outlined text-[20px]">edit</span>
-                                </button>
-                                <button onClick={() => handleDeleteWorkstation(ws.id)} className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors">
-                                  <span className="material-symbols-outlined text-[20px]">delete</span>
-                                </button>
-                                <button onClick={() => setSelectedWsId(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center text-slate-400">
-                                   <span className="material-symbols-outlined text-[20px]">close</span>
-                                </button>
-                              </div>
+    return (
+        <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
+            <Sidebar activeTab="floors" />
+            <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
+                <Header />
+                <div className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold dark:text-white">Floor Map Dashboard</h2>
+                            <p className="text-sm text-gray-500">Manage seat assignments visually</p>
+                        </div>
+                        <div className="flex gap-4 items-center">
+                            {/* Stats Summary */}
+                            <div className="flex gap-4 text-xs font-bold mr-4 bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                                <div className="flex flex-col items-center px-2">
+                                    <span className="text-gray-400">TOTAL</span>
+                                    <span className="text-lg">{stats.total}</span>
+                                </div>
+                                <div className="border-r border-gray-200 dark:border-gray-700 h-8"></div>
+                                <div className="flex flex-col items-center px-2">
+                                    <span className="text-primary">OCCUPIED</span>
+                                    <span className="text-lg">{stats.occupied}</span>
+                                </div>
+                                <div className="border-r border-gray-200 dark:border-gray-700 h-8"></div>
+                                <div className="flex flex-col items-center px-2">
+                                    <span className="text-gray-400">EMPTY</span>
+                                    <span className="text-lg">{stats.empty}</span>
+                                </div>
                             </div>
 
-                            <div className="p-4 rounded-2xl mb-6 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-gray-800">
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">LOCATION</p>
-                               <p className="text-xs font-bold">{ws.location || 'Not assigned to a floor'}</p>
+                            <label className="flex items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2 shadow-md hover:bg-primary/90 transition-all cursor-pointer">
+                                <span className="material-symbols-outlined">upload_file</span>
+                                <span>{uploading ? 'Uploading...' : 'Upload Excel'}</span>
+                                <input type="file" accept=".xlsx" className="hidden" onChange={handleFileUpload} disabled={uploading}/>
+                            </label>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="p-10 text-center text-gray-500">Loading map data...</div>
+                    ) : desks.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                            <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">map</span>
+                            <p className="text-gray-500 font-medium">No floor map data found.</p>
+                            <p className="text-xs text-gray-400 mt-1">Upload an Excel file to get started.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {Object.entries(blocks).map(([blockName, blockDesks]: [string, Desk[]]) => (
+                                <div key={blockName} className="bg-white dark:bg-[#1a2632] rounded-xl border border-[#dbe0e6] dark:border-gray-800 shadow-sm overflow-hidden flex flex-col">
+                                    <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
+                                        <h3 className="font-bold text-lg text-primary">Block {blockName}</h3>
+                                        <span className="text-xs font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded text-gray-500 border border-gray-200 dark:border-gray-700">
+                                            {blockDesks.length} Seats
+                                        </span>
+                                    </div>
+                                    <div className="p-4 grid grid-cols-4 sm:grid-cols-5 gap-2 content-start flex-1">
+                                        {blockDesks.map(desk => (
+                                            <div 
+                                                key={desk._id}
+                                                onClick={() => handleSeatClick(desk)}
+                                                className={`
+                                                    aspect-square rounded-lg flex flex-col items-center justify-center p-1 cursor-pointer transition-all border
+                                                    ${desk.status === 'Occupied' 
+                                                        ? 'bg-primary/10 border-primary/30 hover:bg-primary/20 dark:bg-primary/20 dark:border-primary/40' 
+                                                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700'
+                                                    }
+                                                `}
+                                                title={desk.userName ? `Assigned to: ${desk.userName}` : 'Available'}
+                                            >
+                                                <span className={`text-[10px] font-bold ${desk.status === 'Occupied' ? 'text-primary dark:text-blue-300' : 'text-gray-400'}`}>
+                                                    {desk.workstationId}
+                                                </span>
+                                                {desk.status === 'Occupied' && (
+                                                    <span className="material-symbols-outlined text-[14px] text-primary dark:text-blue-300 mt-0.5">person</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="p-2 border-t border-gray-100 dark:border-gray-800 flex text-[10px] text-gray-400 justify-between px-4">
+                                         <span>Occ: {blockDesks.filter(s => s.status === 'Occupied').length}</span>
+                                         <span>Avail: {blockDesks.filter(s => s.status === 'Available').length}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Loading Overlay */}
+                {uploading && (
+                    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <h3 className="text-white text-xl font-bold">Uploading Floor Map...</h3>
+                        <p className="text-white/80 text-sm">Please wait while we process your file.</p>
+                    </div>
+                )}
+
+                {/* Upload Results Modal */}
+                {uploadResult && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-[#1a2632] rounded-xl shadow-2xl w-full max-w-2xl m-4 border border-[#dbe0e6] dark:border-gray-800 flex flex-col max-h-[90vh]">
+                            <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-full ${uploadResult.summary.failed > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+                                        <span className="material-symbols-outlined">
+                                            {uploadResult.summary.failed > 0 ? 'warning' : 'check_circle'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-lg dark:text-white">Upload Complete</h3>
+                                        <p className="text-xs text-gray-500">Processed {uploadResult.summary.total} records</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setUploadResult(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
                             </div>
-
-                            {ws.status === 'Occupied' ? (
-                              <div className="space-y-4">
-                                 <div className="flex items-center gap-4">
-                                    <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                       <span className="material-symbols-outlined">badge</span>
+                            
+                            <div className="p-6 overflow-y-auto">
+                                <div className="grid grid-cols-3 gap-4 mb-6">
+                                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-center">
+                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Total Rows</p>
+                                        <p className="text-2xl font-black text-gray-800 dark:text-white">{uploadResult.summary.total}</p>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">ASSIGNED EMPLOYEE</p>
-                                       <p className="text-sm font-black truncate text-slate-900 dark:text-white">Employee</p>
-                                       <p className="text-xs font-bold text-slate-400">ID: {ws.assignedEmployeeId}</p>
+                                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl text-center">
+                                        <p className="text-xs text-green-600 dark:text-green-400 uppercase font-bold mb-1">Success</p>
+                                        <p className="text-2xl font-black text-green-600 dark:text-green-400">{uploadResult.summary.upserted}</p>
                                     </div>
-                                    <button onClick={() => handleRelease(ws.id)} className="text-[10px] font-black text-red-500 uppercase hover:underline">Release</button>
-                                 </div>
-                                 <div className="flex gap-3">
-                                   <button 
-                                     onClick={() => setAssetsModalEmployeeId(ws.assignedEmployeeId!)}
-                                     className="flex-1 py-3 bg-slate-100 dark:bg-gray-800 text-slate-900 dark:text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm hover:bg-slate-200 transition-all"
-                                   >
-                                      Assets
-                                   </button>
-                                   <button 
-                                     onClick={() => setAssigningWsId(ws.id)}
-                                     className="flex-1 py-3 bg-primary text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all"
-                                   >
-                                      Reassign
-                                   </button>
-                                 </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-4">
-                                 <p className="text-xs text-slate-400 font-bold leading-relaxed">This workstation is available for allocation.</p>
-                                 <button onClick={() => setAssigningWsId(ws.id)} className="w-full py-4 bg-emerald-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all">Assign User</button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
+                                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl text-center">
+                                        <p className="text-xs text-red-600 dark:text-red-400 uppercase font-bold mb-1">Failed</p>
+                                        <p className="text-2xl font-black text-red-600 dark:text-red-400">{uploadResult.summary.failed}</p>
+                                    </div>
+                                </div>
+
+                                {uploadResult.errors && uploadResult.errors.length > 0 && (
+                                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-bold text-xs text-gray-500 uppercase">
+                                            Error Log
+                                        </div>
+                                        <div className="max-h-60 overflow-y-auto">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-white dark:bg-[#1a2632] sticky top-0">
+                                                    <tr className="text-xs text-gray-400 border-b dark:border-gray-800">
+                                                        <th className="px-4 py-2 font-medium">Row</th>
+                                                        <th className="px-4 py-2 font-medium">Error Message</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                    {uploadResult.errors.map((err: any, idx: number) => (
+                                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                                            <td className="px-4 py-2 font-mono text-gray-500 w-16 text-center">{err.row}</td>
+                                                            <td className="px-4 py-2 text-red-600 dark:text-red-400">
+                                                                {err.message}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 flex justify-end bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
+                                <button 
+                                    onClick={() => setUploadResult(null)} 
+                                    className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Edit Modal */}
+                {isEditModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-[#1a2632] rounded-xl shadow-2xl w-full max-w-md m-4 border border-[#dbe0e6] dark:border-gray-800">
+                            <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                                <h3 className="font-bold text-lg dark:text-white">Edit Seat: {selectedDesk?.workstationId}</h3>
+                                <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                                        <div className={`
+                                            px-3 py-2 rounded-lg text-sm font-bold border 
+                                            ${editForm.empId ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'}
+                                        `}>
+                                            {editForm.empId ? 'Occupied' : 'Available'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">EMP ID (Editable)</label>
+                                        <input 
+                                            className="w-full h-10 rounded-lg border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none"
+                                            value={editForm.empId}
+                                            onChange={e => setEditForm({...editForm, empId: e.target.value})}
+                                            placeholder="Enter EMP ID"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">User Name (Read Only)</label>
+                                    <input 
+                                        className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                                        value={editForm.userName}
+                                        readOnly
+                                    />
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Project (Read Only)</label>
+                                        <input 
+                                            className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                                            value={editForm.project}
+                                            readOnly
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Manager (Read Only)</label>
+                                        <input 
+                                            className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                                            value={editForm.manager}
+                                            readOnly
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
+                                <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:text-gray-800 dark:text-gray-300">Cancel</button>
+                                <button onClick={handleSaveEdit} className="px-4 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20">Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
-
-        {/* Floating AI Chat Bot */}
-        <AIChatBot />
-      </div>
-
-      {/* Asset List Modal */}
-      {assetsModalEmployeeId && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setAssetsModalEmployeeId(null)}></div>
-          <div className="relative bg-white dark:bg-[#1a2632] w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <div>
-                <h3 className="text-2xl font-black tracking-tight">Assigned Assets</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Employee ID: {assetsModalEmployeeId}</p>
-              </div>
-              <button onClick={() => setAssetsModalEmployeeId(null)} className="size-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-slate-400">
-                <span className="material-symbols-outlined text-2xl">close</span>
-              </button>
-            </div>
-            
-            <div className="p-8 space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
-              <p className="text-center text-slate-400 text-sm font-bold py-10 italic">Assets data not available. Please fetch from API.</p>
-            </div>
-
-            <div className="p-8 bg-slate-50 dark:bg-gray-800/30">
-               <button onClick={() => setAssetsModalEmployeeId(null)} className="w-full py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-widest rounded-2xl shadow-sm">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add/Edit Workstation Modal */}
-      {isWsModalOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsWsModalOpen(false)}></div>
-          <div className="relative bg-white dark:bg-[#1a2632] w-full max-w-md rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 p-8 animate-in zoom-in-95 duration-200">
-            <h3 className="text-2xl font-black mb-6">{editingWs ? 'Edit Workstation' : 'Add Workstation'}</h3>
-            <form onSubmit={handleSaveWorkstation} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Workstation ID</label>
-                  <input
-                    name="workstationId"
-                    defaultValue={editingWs?.workstationId || ''}
-                    placeholder="e.g. A-42"
-                    className="w-full bg-slate-50 dark:bg-slate-900 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
-                    required
-                    onChange={(e) => {
-                      // Auto-fill seat number when workstation ID changes
-                      const seatNumberInput = e.target.form?.seatNumber as HTMLInputElement;
-                      if (seatNumberInput) {
-                        seatNumberInput.value = e.target.value;
-                      }
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Seat Number</label>
-                  <input
-                    name="seatNumber"
-                    defaultValue={editingWs?.seatNumber || ''}
-                    placeholder="Auto-filled from Workstation ID"
-                    className="w-full bg-slate-50 dark:bg-slate-900 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
-                    required
-                    readOnly
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Floor Type</label>
-                  <input
-                    name="floorType"
-                    defaultValue={editingWs?.floorType || ''}
-                    placeholder="e.g. A"
-                    className="w-full bg-slate-50 dark:bg-slate-900 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
-                    required
-                    pattern="^[A-Z]$"
-                    title="Floor Type must be a single uppercase letter (A-Z)"
-                    maxLength={1}
-                  />
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button type="button" onClick={() => setIsWsModalOpen(false)} className="flex-1 py-4 bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl">Cancel</button>
-                  <button type="submit" className="flex-1 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20">Save Station</button>
-                </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Assign User Popup */}
-      {assigningWsId && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setAssigningWsId(null)}></div>
-          <div className="relative bg-white dark:bg-[#1a2632] w-full max-w-md rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 p-8 animate-in zoom-in-95 duration-200">
-            <h3 className="text-2xl font-black mb-2">Assign Station</h3>
-            <p className="text-sm text-slate-400 mb-6">Select employee for station <span className="font-black text-primary">{workstations.find(w => w.id === assigningWsId)?.seatNumber}</span></p>
-            
-            {assignError && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 rounded-2xl flex items-start gap-3 text-red-600 dark:text-red-400 animate-in slide-in-from-top-2">
-                <span className="material-symbols-outlined text-sm mt-0.5">error</span>
-                <p className="text-xs font-bold leading-relaxed">{assignError}</p>
-              </div>
-            )}
-
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 no-scrollbar">
-              <p className="text-center text-slate-400 text-sm font-bold py-10 italic">User data not available. Please fetch from API.</p>
-            </div>
-            <button onClick={() => setAssigningWsId(null)} className="w-full mt-6 py-4 bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl">Cancel</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default FloorMapPage;

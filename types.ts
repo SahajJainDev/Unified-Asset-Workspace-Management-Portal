@@ -56,13 +56,17 @@ export interface Software {
 }
 
 export interface Desk {
-  id: string;
-  isOccupied: boolean;
-  occupant?: {
-    name: string;
-    role: string;
-    avatar: string;
-  };
+  _id?: string;
+  workstationId: string;
+  block: string;
+  empId?: string;
+  userName?: string;
+  project?: string;
+  manager?: string;
+  status: 'Available' | 'Occupied';
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface QuikrLog {
@@ -84,45 +88,14 @@ export interface User {
   workstationId?: string;
 }
 
-export interface Floor {
-  _id: string;
-  name: string;
-  description?: string;
-  building: string;
-  level: number;
-  rooms?: Room[];
-  workstations?: Workstation[];
-  layout?: any;
-  isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
 
-export interface Room {
-  _id: string;
-  name: string;
-  type: string;
-  floor: string;
-  capacity: number;
-  location: string;
-  workstations?: Workstation[];
-  amenities?: string[];
-  isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
 
-export interface Workstation {
+export interface Employee {
   _id?: string;
-  workstationId: string;
-  seatNumber: string;
-  floorType: string;
-  status: 'Available' | 'Occupied';
-  floor?: string;
-  room?: string;
-  assignedEmployeeId?: string;
-  position?: { x: number; y: number };
-  isActive: boolean;
+  empId: string;
+  fullName: string;
+  email?: string;
+  department?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
