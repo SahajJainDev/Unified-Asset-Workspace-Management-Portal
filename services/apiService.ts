@@ -197,6 +197,19 @@ class ApiService {
     });
   }
 
+  async deleteBatchAssets(ids: string[]): Promise<void> {
+    return this.request<void>('/assets/delete-batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+
+  async deleteAllAssets(): Promise<void> {
+    return this.request<void>('/assets/all-assets', {
+      method: 'DELETE',
+    });
+  }
+
   // License CRUD operations
   async getLicenses(): Promise<License[]> {
     return this.request<License[]>('/licenses');

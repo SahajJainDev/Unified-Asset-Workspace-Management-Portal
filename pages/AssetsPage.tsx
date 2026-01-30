@@ -15,6 +15,7 @@ const AssetsPage: React.FC = () => {
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchAssets = async () => {
     try {
@@ -23,7 +24,8 @@ const AssetsPage: React.FC = () => {
       const data = await apiService.getAssets();
       // Map API response to table format
       const mappedAssets = data.map((asset: any) => ({
-        id: asset.assetTag || asset.id,
+        id: asset.assetTag || asset.id || asset._id, // Ensure we catch _id if tag is missing
+        _realId: asset._id, // Keep real ID for reference if needed
         n: asset.assetName,
         d: `${asset.model || ''} • ${asset.specs?.processor || ''} ${asset.specs?.memory || ''}`.trim(),
         u: asset.assignedTo || 'Unassigned',
@@ -31,6 +33,8 @@ const AssetsPage: React.FC = () => {
         sc: asset.status === 'IN USE' ? 'green' : asset.status === 'REPAIR' ? 'amber' : 'blue'
       }));
       setAssets(mappedAssets);
+      // Clear selection on refresh
+      setSelectedIds(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch assets');
     } finally {
@@ -44,11 +48,54 @@ const AssetsPage: React.FC = () => {
 
   const filteredAssets = useMemo(() => {
     return assets.filter(asset => 
-      asset.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.n.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.u.toLowerCase().includes(searchQuery.toLowerCase())
+      String(asset.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(asset.n).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(asset.u).toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, assets]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked) {
+          const allIds = new Set(filteredAssets.map(a => a.id));
+          setSelectedIds(allIds);
+      } else {
+          setSelectedIds(new Set());
+      }
+  };
+
+  const handleSelectRow = (id: string) => {
+      const newSelected = new Set(selectedIds);
+      if (newSelected.has(id)) {
+          newSelected.delete(id);
+      } else {
+          newSelected.add(id);
+      }
+      setSelectedIds(newSelected);
+  };
+
+  const handleDeleteAll = async () => {
+      if (window.confirm('Are you sure you want to DELETE ALL assets? This action cannot be undone.')) {
+          try {
+              await apiService.deleteAllAssets();
+              fetchAssets();
+              alert('All assets deleted successfully.');
+          } catch (err) {
+              alert('Failed to delete assets.');
+          }
+      }
+  };
+
+  const handleDeleteSelected = async () => {
+      if (selectedIds.size === 0) return;
+      if (window.confirm(`Are you sure you want to delete ${selectedIds.size} selected assets?`)) {
+          try {
+              await apiService.deleteBatchAssets(Array.from(selectedIds));
+              fetchAssets();
+          } catch (err) {
+              alert('Failed to delete selected assets.');
+          }
+      }
+  };
 
   const handleExportCSV = () => {
     if (filteredAssets.length === 0) return;
@@ -85,9 +132,25 @@ const AssetsPage: React.FC = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-[#111418] dark:text-white text-3xl font-black tracking-tight leading-tight">Asset Master List</h2>
-              <p className="text-[#617589] dark:text-gray-400 text-sm">Managing 2,482 enterprise hardware assets</p>
+              <p className="text-[#617589] dark:text-gray-400 text-sm">Managing {assets.length} enterprise hardware assets</p>
             </div>
             <div className="flex gap-3">
+              {selectedIds.size > 0 && (
+                  <button 
+                    onClick={handleDeleteSelected}
+                    className="flex items-center justify-center rounded-lg h-10 px-4 bg-red-50 text-red-600 border border-red-200 text-sm font-bold gap-2 hover:bg-red-100 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                    <span>Delete ({selectedIds.size})</span>
+                  </button>
+              )}
+              <button 
+                onClick={handleDeleteAll}
+                className="flex items-center justify-center rounded-lg h-10 px-4 bg-red-600 text-white text-sm font-bold gap-2 hover:bg-red-700 transition-all shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[20px]">delete_forever</span>
+                <span>Delete All</span>
+              </button>
               <Link to="/upload" className="flex items-center justify-center rounded-lg h-10 px-4 bg-white dark:bg-[#1a2632] border border-[#dbe0e6] dark:border-gray-800 text-[#111418] dark:text-white text-sm font-bold gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm">
                 <span className="material-symbols-outlined text-[20px]">upload</span>
                 <span>Bulk Upload</span>
@@ -143,7 +206,14 @@ const AssetsPage: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-800/50 text-[#617589] dark:text-gray-400 uppercase text-[11px] font-bold tracking-wider">
-                      <th className="px-6 py-4 w-10"><input type="checkbox" className="rounded text-primary focus:ring-primary"/></th>
+                      <th className="px-6 py-4 w-10">
+                          <input 
+                            type="checkbox" 
+                            className="rounded text-primary focus:ring-primary"
+                            checked={filteredAssets.length > 0 && selectedIds.size === filteredAssets.length}
+                            onChange={handleSelectAll}
+                        />
+                      </th>
                       <th className="px-6 py-4">Asset ID</th>
                       <th className="px-6 py-4">Name & Model</th>
                       <th className="px-6 py-4">Assigned User</th>
@@ -155,10 +225,17 @@ const AssetsPage: React.FC = () => {
                     {filteredAssets.length > 0 ? filteredAssets.map((asset, i) => (
                       <tr
                         key={i}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer group"
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer group ${selectedIds.has(asset.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                         onClick={() => navigate(`/assets/${asset.id}`)}
                       >
-                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="rounded text-primary focus:ring-primary" onChange={() => {}}/></td>
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                                type="checkbox" 
+                                className="rounded text-primary focus:ring-primary"
+                                checked={selectedIds.has(asset.id)}
+                                onChange={() => handleSelectRow(asset.id)}
+                            />
+                        </td>
                         <td className="px-6 py-4 font-mono text-xs font-semibold text-primary">{asset.id}</td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
@@ -204,7 +281,6 @@ const AssetsPage: React.FC = () => {
         </div>
         <AIChatBot />
       </main>
-
       <AddAssetModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

@@ -7,6 +7,78 @@ import AIChatBot from '../components/AIChatBot';
 
 const AssetDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [asset, setAsset] = React.useState<any>(null); // Using any for flexibility during transition, ideally matches Asset interface
+  const [loading, setLoading] = React.useState(true);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [formData, setFormData] = React.useState<any>({});
+
+  React.useEffect(() => {
+    fetchAsset();
+  }, [id]);
+
+  const fetchAsset = async () => {
+    try {
+      // Assuming backend uses _id for fetching, but if URL has assetTag, we might need a search. 
+      // For now, let's try assuming the ID in URL is the DB ID.
+      // If the URL passes 'Asset-042' which is not a MongoID, this might fail unless backend handles lookup by tag.
+      // The previous code had `id || 'Asset-042'`, implying id might be undefined or just a placeholder.
+      if (!id) return; 
+      
+      const res = await fetch(`http://localhost:5000/api/assets/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAsset(data);
+        setFormData(data);
+      } else {
+        console.error('Failed to fetch asset');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    // Handle nested employee fields
+    if (name.startsWith('employee.')) {
+        const field = name.split('.')[1];
+        setFormData((prev: any) => ({
+            ...prev,
+            employee: { ...prev.employee, [field]: value }
+        }));
+    } else if (name.startsWith('specs.')) {
+        const field = name.split('.')[1];
+        setFormData((prev: any) => ({
+            ...prev,
+            specs: { ...prev.specs, [field]: value }
+        }));
+    } else {
+        setFormData((prev: any) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+        const res = await fetch(`http://localhost:5000/api/assets/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        if (res.ok) {
+            const updated = await res.json();
+            setAsset(updated);
+            setIsEditing(false);
+            // Optional: show toast
+        } else {
+            alert('Failed to save changes');
+        }
+    } catch (error) {
+        console.error('Error saving:', error);
+        alert('Error saving changes');
+    }
+  };
 
   const installedSoftware = [
     { name: 'Adobe Creative Cloud', version: 'v2024.1', date: 'Jan 15, 2024', status: 'Compliant' },
@@ -15,13 +87,16 @@ const AssetDetailPage: React.FC = () => {
     { name: 'SentinelOne Agent', version: 'v23.2', date: 'Jan 01, 2024', status: 'Secured' },
   ];
 
-  // Integrated history items from Quikr logs
+  // Integrated history items
   const historyItems = [
     { date: 'Mar 20, 2024', event: 'Quikr Modification', desc: 'Battery health reported as 94% via Quikr auto-scan.', icon: 'bolt', color: 'bg-primary/10 text-primary' },
     { date: 'Oct 12, 2023', event: 'Asset Assigned', desc: 'Assigned to Sarah Jenkins for Product Design role.', icon: 'person_add', color: 'bg-blue-100 text-blue-600' },
-    { date: 'Sep 28, 2023', event: 'Provisioned', desc: 'Installed standard design suite and security patches.', icon: 'settings', color: 'bg-green-100 text-green-600' },
-    { date: 'Sep 25, 2023', event: 'Purchased', desc: 'Ordered from Apple Enterprise Store.', icon: 'shopping_cart', color: 'bg-gray-100 text-gray-600' },
+     // using asset data creation if available
+    { date: asset?.createdAt ? new Date(asset.createdAt).toLocaleDateString() : 'Sep 25, 2023', event: 'Purchased', desc: 'Added to system.', icon: 'shopping_cart', color: 'bg-gray-100 text-gray-600' },
   ];
+
+  if (loading) return <div className="p-10">Loading...</div>;
+  if (!asset && !loading) return <div className="p-10">Asset not found</div>;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
@@ -32,7 +107,7 @@ const AssetDetailPage: React.FC = () => {
           <div className="flex flex-wrap gap-2 items-center mb-4">
             <Link className="text-[#617589] text-sm font-medium hover:text-primary transition-colors" to="/assets">Assets</Link>
             <span className="text-[#617589] text-sm">/</span>
-            <span className="text-primary text-sm font-semibold">{id || 'Asset-042'}</span>
+            <span className="text-primary text-sm font-semibold">{asset.assetTag}</span>
           </div>
 
           <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 mb-6 shadow-sm">
@@ -44,18 +119,34 @@ const AssetDetailPage: React.FC = () => {
                 ></div>
                 <div className="flex flex-col justify-center">
                   <div className="flex items-center gap-3 mb-1">
-                    <h1 className="text-[#111418] dark:text-white text-2xl font-bold leading-tight">MacBook Pro 16" - Asset {id || 'IT-042'}</h1>
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-primary text-xs font-bold uppercase tracking-wider">In Use</span>
+                    <h1 className="text-[#111418] dark:text-white text-2xl font-bold leading-tight">{asset.assetName} - {asset.assetTag}</h1>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-primary text-xs font-bold uppercase tracking-wider">{asset.status}</span>
                   </div>
-                  <p className="text-[#617589] text-base font-normal">Assigned to <span className="text-[#111418] dark:text-white font-medium">Sarah Jenkins</span> (Product Design)</p>
-                  <p className="text-[#617589] text-sm font-normal mt-1">Serial: C02FX555LVDL | Tag: {id || 'ASSET-8821'}</p>
+                  <p className="text-[#617589] text-base font-normal">
+                    Assigned to <span className="text-[#111418] dark:text-white font-medium">{asset.employee?.name || 'Unassigned'}</span> 
+                    {asset.employee?.number && <span className="text-[#617589]"> ({asset.employee.number})</span>}
+                    {asset.employee?.department && ` (${asset.employee.department})`}
+                  </p>
+                  <p className="text-[#617589] text-sm font-normal mt-1">Serial: {asset.serialNumber} | Tag: {asset.assetTag}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-[#f0f2f4] dark:bg-slate-800 text-[#111418] dark:text-white text-sm font-bold border border-transparent hover:border-gray-300 transition-all">
-                  <span className="material-symbols-outlined">edit</span>
-                  <span>Edit</span>
-                </button>
+                {isEditing ? (
+                    <>
+                        <button onClick={() => setIsEditing(false)} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-gray-200 text-gray-700 text-sm font-bold">
+                            Cancel
+                        </button>
+                        <button onClick={handleSave} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-green-600 text-white text-sm font-bold hover:bg-green-700">
+                            <span className="material-symbols-outlined">save</span>
+                            <span>Save Changes</span>
+                        </button>
+                    </>
+                ) : (
+                    <button onClick={() => setIsEditing(true)} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-[#f0f2f4] dark:bg-slate-800 text-[#111418] dark:text-white text-sm font-bold border border-transparent hover:border-gray-300 transition-all">
+                        <span className="material-symbols-outlined">edit</span>
+                        <span>Edit</span>
+                    </button>
+                )}
                 <button className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
                   <span className="material-symbols-outlined">logout</span>
                   <span>Reassign</span>
@@ -70,19 +161,19 @@ const AssetDetailPage: React.FC = () => {
                <div className="space-y-3">
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Invoice Number</span>
-                   <span className="font-bold text-primary">INV-2023-0428</span>
+                   <span className="font-bold text-primary">{asset.invoiceNumber || '-'}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Added By</span>
-                   <span className="font-bold">Alex Rivera</span>
+                   <span className="font-bold">{asset.addedBy || '-'}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Purchased On</span>
-                   <span className="font-medium">Sep 12, 2023</span>
+                   <span className="font-medium">{asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '-'}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Vendor</span>
-                   <span className="font-medium">Apple Enterprise</span>
+                   <span className="font-medium">{asset.vendorName || '-'}</span>
                  </div>
                </div>
             </div>
@@ -92,15 +183,15 @@ const AssetDetailPage: React.FC = () => {
                <div className="space-y-3">
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Processor</span>
-                   <span className="font-medium">Apple M2 Max</span>
+                   <span className="font-medium">{asset.specs?.processor || '-'}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Memory</span>
-                   <span className="font-medium">32 GB</span>
+                   <span className="font-medium">{asset.specs?.memory || '-'}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Battery Health</span>
-                   <span className="font-bold text-green-500">94%</span>
+                   <span className="font-bold text-green-500">{asset.specs?.batteryHealth || '-'}</span>
                  </div>
                </div>
             </div>
@@ -109,16 +200,12 @@ const AssetDetailPage: React.FC = () => {
                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Location Info</h3>
                <div className="space-y-3">
                  <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Zone</span>
-                   <span className="font-medium">HQ - SF / Wing B</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Desk ID</span>
-                   <span className="font-medium">B-102</span>
+                   <span className="text-[#617589]">Description / Loc</span>
+                   <span className="font-medium">{asset.description || '-'}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                    <span className="text-[#617589]">Last Seen</span>
-                   <span className="font-medium">Today, 09:42 AM</span>
+                   <span className="font-medium">Today</span>
                  </div>
                </div>
             </div>
@@ -132,6 +219,7 @@ const AssetDetailPage: React.FC = () => {
                   <h3 className="text-lg font-bold">Installed Software</h3>
                   <button className="text-xs font-bold text-primary px-3 py-1 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors">Manage Apps</button>
                 </div>
+                {/* Logic for software table kept same as static mock for now */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
@@ -162,6 +250,65 @@ const AssetDetailPage: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+              
+              {/* NEW SECTION: Asset Details */}
+              <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 shadow-sm">
+                  <h3 className="text-lg font-bold mb-6">Asset Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[
+                        { label: 'Asset Id', name: 'assetTag', value: asset.assetTag, type: 'text' },
+                        { label: 'Asset Name', name: 'assetName', value: asset.assetName, type: 'text' },
+                        { label: 'Description / Location', name: 'description', value: asset.description, type: 'text' },
+                        { label: 'Warranty Expires On', name: 'warrantyExpiry', value: asset.warrantyExpiry, type: 'date' },
+                        { label: 'Asset Condition', name: 'condition', value: asset.condition, type: 'select', options: ['New', 'Good', 'Fair', 'Poor', 'Damaged'] },
+                        { label: 'Asset Status', name: 'status', value: asset.status, type: 'select', options: ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged'] },
+                        { label: 'Reason (if N/A)', name: 'reasonNotAvailable', value: asset.reasonNotAvailable, type: 'text' },
+                        { label: 'Employee #', name: 'employee.number', value: asset.employee?.number, type: 'text' },
+                        { label: 'Employee Name', name: 'employee.name', value: asset.employee?.name, type: 'text' },
+                        { label: 'Department', name: 'employee.department', value: asset.employee?.department, type: 'text' },
+                        { label: 'Sub-Department', name: 'employee.subDepartment', value: asset.employee?.subDepartment, type: 'text' },
+                        { label: 'Assignment Date', name: 'assignmentDate', value: asset.assignmentDate, type: 'date' },
+                        { label: 'Invoice No', name: 'invoiceNumber', value: asset.invoiceNumber, type: 'text' },
+                        { label: 'Vendor Name', name: 'vendorName', value: asset.vendorName, type: 'text' },
+                        { label: 'PO', name: 'purchaseOrderNumber', value: asset.purchaseOrderNumber, type: 'text' },
+                        { label: 'Asset Serial/Tag', name: 'serialNumber', value: asset.serialNumber, type: 'text' },
+                        { label: 'RAM', name: 'specs.memory', value: asset.specs?.memory, type: 'text' },
+                        { label: 'Processor', name: 'specs.processor', value: asset.specs?.processor, type: 'text' },
+                        { label: 'HDD', name: 'specs.storage', value: asset.specs?.storage, type: 'text' },
+                        { label: 'Asset Model', name: 'model', value: asset.model, type: 'text' },
+                        { label: 'Make', name: 'make', value: asset.make, type: 'text' },
+                      ].map((field, i) => (
+                          <div key={i} className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-[#617589] uppercase tracking-tight">{field.label}</label>
+                              {isEditing ? (
+                                  field.type === 'select' ? (
+                                    <select 
+                                        name={field.name}
+                                        value={field.name.includes('.') ? field.name.split('.').reduce((a:any, b:any) => a?.[b], formData) : formData[field.name] || ''}
+                                        onChange={handleChange}
+                                        className="border border-gray-300 rounded p-1.5 text-sm bg-gray-50"
+                                    >
+                                        <option value="">Select...</option>
+                                        {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                  ) : (
+                                    <input 
+                                        type={field.type} 
+                                        name={field.name}
+                                        value={field.name.includes('.') ? field.name.split('.').reduce((a:any, b:any) => a?.[b], formData) || '' : formData[field.name] || ''}
+                                        onChange={handleChange}
+                                        className="border border-gray-300 rounded p-1.5 text-sm bg-gray-50 focus:ring-1 focus:ring-primary outline-none"
+                                    />
+                                  )
+                              ) : (
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 min-h-[20px]">
+                                      {field.value ? (field.type === 'date' ? new Date(field.value).toLocaleDateString() : field.value) : '-'}
+                                  </span>
+                              )}
+                          </div>
+                      ))}
+                  </div>
               </div>
 
               <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 shadow-sm">

@@ -7,15 +7,32 @@ export enum AssetStatus {
 }
 
 export interface Asset {
-  id: string;
-  name: string;
+  _id: string; // Mongoose ID
+  assetName: string;
+  assetType: string;
   model: string;
+  make: string;
   description: string;
-  assignedUser: string;
+  assignedTo: string; // Legacy field, kept for compatibility if needed
   status: AssetStatus;
-  statusColor: string;
+  statusColor?: string; // Frontend helper
   serialNumber: string;
   assetTag: string;
+  condition: string;
+  reasonNotAvailable: string;
+  assignmentDate: string; // ISO date string
+  vendorName: string;
+  purchaseOrderNumber: string; // PO
+  invoiceNumber: string;
+  addedBy: string;
+  purchaseDate: string; // ISO date string
+  warrantyExpiry: string; // ISO date string
+  employee: {
+    number: string;
+    name: string;
+    department: string;
+    subDepartment: string;
+  };
   specs: {
     processor: string;
     memory: string;
@@ -25,6 +42,8 @@ export interface Asset {
     storageUsage?: number;
     memoryUsage?: number;
   };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Software {

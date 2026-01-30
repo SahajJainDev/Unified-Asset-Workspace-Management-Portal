@@ -192,36 +192,54 @@ router.get("/", async (req, res) => {
 });
 
 // GET Asset by ID
+// GET Asset by ID or Asset Tag
 router.get("/:id", async (req, res) => {
   try {
-    const asset = await Asset.findById(req.params.id);
+    let asset;
+    const { ObjectId } = require('mongoose').Types;
+    
+    // Check if valid ObjectId
+    if (ObjectId.isValid(req.params.id)) {
+        asset = await Asset.findById(req.params.id);
+    }
+    
+    // If not found by ID or not a valid ID, try searching by assetTags
+    if (!asset) {
+        asset = await Asset.findOne({ assetTag: req.params.id });
+    }
+
     if (!asset) return res.status(404).json({ message: "Asset not found" });
     res.json(asset);
   } catch (error) {
-    if (error.name === 'CastError') {
-      res.status(400).json({ message: 'Invalid asset ID format' });
-    } else {
-      console.error('Error fetching asset:', error);
-      res.status(500).json({ message: 'Failed to fetch asset' });
-    }
+     console.error('Error fetching asset:', error);
+     res.status(500).json({ message: 'Failed to fetch asset' });
   }
 });
 
 // UPDATE Asset
+// UPDATE Asset
 router.put("/:id", validateAssetData, async (req, res) => {
   try {
-    const updatedAsset = await Asset.findByIdAndUpdate(
-      req.params.id,
+    let query = {};
+    const { ObjectId } = require('mongoose').Types;
+
+    if (ObjectId.isValid(req.params.id)) {
+        query = { _id: req.params.id };
+    } else {
+        query = { assetTag: req.params.id };
+    }
+
+    const updatedAsset = await Asset.findOneAndUpdate(
+      query,
       req.body,
       { new: true, runValidators: true }
     );
+
     if (!updatedAsset) return res.status(404).json({ message: "Asset not found" });
     res.json(updatedAsset);
   } catch (error) {
     if (error.code === 11000) {
       res.status(400).json({ message: 'Asset tag must be unique' });
-    } else if (error.name === 'CastError') {
-      res.status(400).json({ message: 'Invalid asset ID format' });
     } else {
       res.status(400).json({ message: error.message });
     }
@@ -229,18 +247,68 @@ router.put("/:id", validateAssetData, async (req, res) => {
 });
 
 // DELETE Asset
+// DELETE Batch Assets
+router.post("/delete-batch", async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "No IDs provided" });
+        }
+
+        const { ObjectId } = require('mongoose').Types;
+        
+        // This logic handles both _ids and assetTags, similar to our single delete/get logic
+        // We find docs that match _id IN ids OR assetTag IN ids
+        
+        // Split ids into valid ObjectIds and others (assumed tags)
+        const objectIds = ids.filter(id => ObjectId.isValid(id));
+        const otherIds = ids.filter(id => !ObjectId.isValid(id));
+        
+        const result = await Asset.deleteMany({
+            $or: [
+                { _id: { $in: objectIds } },
+                { assetTag: { $in: otherIds } },
+                { assetTag: { $in: objectIds } } // In case an assetTag looks like an ObjectId? Unlikely but possible
+            ]
+        });
+
+        res.json({ message: "Assets deleted successfully", count: result.deletedCount });
+    } catch (error) {
+        console.error('Error deleting assets:', error);
+        res.status(500).json({ message: 'Failed to delete assets' });
+    }
+});
+
+// DELETE All Assets
+router.delete("/all-assets", async (req, res) => {
+    try {
+        const result = await Asset.deleteMany({});
+        res.json({ message: "All assets deleted successfully", count: result.deletedCount });
+    } catch (error) {
+        console.error('Error deleting all assets:', error);
+        res.status(500).json({ message: 'Failed to delete all assets' });
+    }
+});
+
+// DELETE Asset
 router.delete("/:id", async (req, res) => {
   try {
-    const deletedAsset = await Asset.findByIdAndDelete(req.params.id);
+    let deletedAsset;
+    const { ObjectId } = require('mongoose').Types;
+    
+    if (ObjectId.isValid(req.params.id)) {
+        deletedAsset = await Asset.findByIdAndDelete(req.params.id);
+    }
+    
+    if (!deletedAsset) {
+        deletedAsset = await Asset.findOneAndDelete({ assetTag: req.params.id });
+    }
+    
     if (!deletedAsset) return res.status(404).json({ message: "Asset not found" });
     res.json({ message: "Asset deleted successfully" });
   } catch (error) {
-    if (error.name === 'CastError') {
-      res.status(400).json({ message: 'Invalid asset ID format' });
-    } else {
       console.error('Error deleting asset:', error);
       res.status(500).json({ message: 'Failed to delete asset' });
-    }
   }
 });
 
