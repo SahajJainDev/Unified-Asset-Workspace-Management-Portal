@@ -53,11 +53,26 @@ router.get("/stats", async (req, res) => {
     ];
 
     // Desk status (mock data - would need desk model)
+    // Desk status (Real Data)
+    const totalDesks = await Desk.countDocuments();
+    const occupiedDesks = await Desk.countDocuments({ status: 'Occupied' });
+    const availableDesks = await Desk.countDocuments({ status: 'Available' });
+    // Reserved is not currently tracked effectively in Excel/Model logic, usually specific status. 
+    // If not tracked, set to 0 or imply from other logic. For now, 0 or check if 'Reserved' status exists.
+    // Based on Desk.js model, status enum is ['Available', 'Occupied']. So Reserved is 0.
+    const reservedDesks = 0; 
+
     const deskStatus = {
-      occupied: 425,
-      available: 50,
-      reserved: 25,
-      total: 500
+      occupied: occupiedDesks,
+      available: availableDesks,
+      reserved: reservedDesks,
+      total: totalDesks
+    };
+
+    // Helper for Asset Colors
+    const getAssetColor = (index) => {
+        const colors = ['#137fec', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'];
+        return colors[index % colors.length];
     };
 
     // Verification stats from database
@@ -73,10 +88,10 @@ router.get("/stats", async (req, res) => {
 
     const stats = {
       totalAssets,
-      assetDistribution: assetDistribution.map(item => ({
+      assetDistribution: assetDistribution.map((item, index) => ({
         name: item._id || 'Other',
         value: item.count,
-        color: '#137fec'
+        color: getAssetColor(index)
       })),
       assetStatusCounts,
       expiringLicenses,

@@ -1,34 +1,48 @@
 const mongoose = require('mongoose');
 
 const deskSchema = new mongoose.Schema({
-  status: {
-    type: String,
-    enum: ['Occupied', 'Available', 'Reserved'],
-    required: true
-  },
-  deskId: {
+  workstationId: {
     type: String,
     required: true,
     unique: true
   },
-  location: {
+  block: {
     type: String,
-    required: true
+    required: true,
+    default: 'A'
   },
-  assignedTo: {
+  empId: {
     type: String,
-    default: null
+    default: ''
   },
-  lastUpdated: {
-    type: Date,
-    default: Date.now
+  userName: {
+    type: String,
+    default: ''
+  },
+  project: {
+    type: String,
+    default: ''
+  },
+  manager: {
+    type: String,
+    default: ''
+  },
+  status: {
+    type: String,
+    enum: ['Available', 'Occupied'],
+    default: 'Available'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true
 });
 
 // Index for efficient queries
+deskSchema.index({ block: 1 });
 deskSchema.index({ status: 1 });
-deskSchema.index({ location: 1 });
+deskSchema.index({ workstationId: 1 });
 
 module.exports = mongoose.model('Desk', deskSchema);
