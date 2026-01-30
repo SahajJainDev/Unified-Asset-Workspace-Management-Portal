@@ -1,0 +1,50 @@
+
+import React from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import AssetsPage from './pages/AssetsPage';
+import AssetDetailPage from './pages/AssetDetailPage';
+import SoftwarePage from './pages/SoftwarePage';
+import LicensePage from './pages/LicensePage';
+import VerificationPage from './pages/VerificationPage';
+import AssetVerificationListPage from './pages/AssetVerificationListPage';
+import QuikrLogsPage from './pages/QuikrLogsPage';
+import ReportsPage from './pages/ReportsPage';
+import UploadPage from './pages/UploadPage';
+import FloorMapPage from './pages/FloorMapPage';
+import UserVerificationPage from './pages/UserVerificationPage';
+import UserSeatAllocationPage from './pages/UserSeatAllocationPage';
+import UsersPage from './pages/UsersPage';
+
+const App: React.FC = () => {
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/assets" element={<AssetsPage />} />
+        <Route path="/assets/:id" element={<AssetDetailPage />} />
+        <Route path="/software" element={<SoftwarePage />} />
+        <Route path="/licenses" element={<LicensePage />} />
+        <Route path="/verification" element={<VerificationPage />} />
+        <Route path="/verification-list" element={<AssetVerificationListPage />} />
+        <Route path="/quikr-logs" element={<QuikrLogsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/map" element={<FloorMapPage />} />
+        
+        {/* New Admin Modules */}
+        <Route path="/users" element={<UsersPage />} />
+        
+        {/* User Specific Routes */}
+        <Route path="/user/verify" element={<UserVerificationPage />} />
+        <Route path="/user/seat" element={<UserSeatAllocationPage />} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </HashRouter>
+  );
+};
+
+export default App;

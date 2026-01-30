@@ -1,0 +1,247 @@
+const express = require("express");
+const router = express.Router();
+const Asset = require("../models/Asset");
+const multer = require('multer');
+const xlsx = require('xlsx');
+const fs = require('fs');
+const path = require('path');
+
+// Configure Multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/';
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)){
+        fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
+
+// Middleware for validating asset data
+const validateAssetData = (req, res, next) => {
+  const { assetName, assetType, status } = req.body;
+
+  if (!assetName || typeof assetName !== 'string' || assetName.trim().length === 0) {
+    return res.status(400).json({ message: 'Asset name is required and must be a non-empty string' });
+  }
+
+  const validAssetTypes = ['Laptop', 'Monitor', 'Mouse', 'Keyboard', 'Smartphone', 'Tablet', 'Other'];
+  if (assetType && !validAssetTypes.includes(assetType)) {
+      // Allow it to pass if not provided (will use default), but if provided must be valid.
+      // However the strictly typed requirement suggests we should validate.
+      // Existing code enforced it, so we keep it. but 'default' is 'Laptop' in schema.
+      return res.status(400).json({ message: 'Invalid asset type' });
+  }
+
+  const validStatuses = ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged']; 
+  // Updated to include new statuses
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  next();
+};
+
+// ... (Existing routes) ...
+
+// BULK UPLOAD Assets
+router.post("/bulk-upload", upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const results = {
+        insertedCount: 0,
+        failedCount: 0,
+        errors: []
+    };
+
+    try {
+        const workbook = xlsx.readFile(req.file.path);
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json(sheet);
+
+        for (let i = 0; i < rows.length; i++) {
+            const rowData = rows[i];
+            const rowNumber = i + 2; // Excel row number (1-based header is 1)
+
+            try {
+                // Map Excel columns to Asset model fields
+                // Excel Column Structure (Mandatory)
+                // Asset Id, Asset Name, Asset Description / Location, Warranty Expires On, Asset Condition, Asset Status, Reason, if Not Available, Employee Number, if Assigned, Employee Name if Assigned, Employee Department if Assigned, Employee Sub Department if Assigned, Date of Asset Assignment, Invoice No, Vendor Name, PO, Asset Serial/Tag, RAM, Processor, HDD, Asset Model, Make
+
+                const mappedAsset = {
+                    assetTag: rowData['Asset Id'],
+                    assetName: rowData['Asset Name'],
+                    description: rowData['Asset Description / Location'],
+                    warrantyExpiry: rowData['Warranty Expires On'], // Date parsing might be needed
+                    condition: rowData['Asset Condition'],
+                    status: rowData['Asset Status'],
+                    reasonNotAvailable: rowData['Reason, if Not Available'],
+                    assignmentDate: rowData['Date of Asset Assignment'],
+                    invoiceNumber: rowData['Invoice No'],
+                    vendorName: rowData['Vendor Name'],
+                    purchaseOrderNumber: rowData['PO'],
+                    serialNumber: rowData['Asset Serial/Tag'] || rowData['Asset Serial'], // Handle potential naming variations
+                    model: rowData['Asset Model'],
+                    make: rowData['Make'],
+                    specs: {
+                        memory: rowData['RAM'],
+                        processor: rowData['Processor'],
+                        storage: rowData['HDD']
+                    },
+                    employee: {}
+                };
+
+                // Validate Status and Employee fields
+                if (mappedAsset.status === 'Assigned') {
+                    if (!rowData['Employee Number, if Assigned'] || !rowData['Employee Name if Assigned']) {
+                        throw new Error(`Row ${rowNumber}: Status is Assigned but Employee Number or Name is missing.`);
+                    }
+                    mappedAsset.employee = {
+                        number: rowData['Employee Number, if Assigned'],
+                        name: rowData['Employee Name if Assigned'],
+                        department: rowData['Employee Department if Assigned'],
+                        subDepartment: rowData['Employee Sub Department if Assigned']
+                    };
+                }
+
+                // Basic Validation (Check required fields)
+                if (!mappedAsset.assetName) throw new Error(`Row ${rowNumber}: Asset Name is required.`);
+                if (!mappedAsset.assetTag) throw new Error(`Row ${rowNumber}: Asset Id (Tag) is required.`);
+
+                // Check for duplicate Asset Tag in DB
+                const existingAsset = await Asset.findOne({ assetTag: mappedAsset.assetTag });
+                if (existingAsset) {
+                    throw new Error(`Row ${rowNumber}: Asset Tag ${mappedAsset.assetTag} already exists.`);
+                }
+
+                // Determine Asset Type? Assuming 'Laptop' or trying to infer?
+                // For now, we'll let it default to 'Laptop' or 'Other' if not specified in Excel,
+                // but Excel doesn't have an 'Asset Type' column listed in requirements. 
+                // We'll leave it as default or infer from 'Asset Name' if we wanted to be fancy.
+                // Keeping it default 'Laptop' as per Schema default for now.
+
+                const newAsset = new Asset(mappedAsset);
+                await newAsset.save();
+                results.insertedCount++;
+
+            } catch (error) {
+                results.failedCount++;
+                results.errors.push({
+                    row: rowNumber,
+                    message: error.message,
+                    data: rowData
+                });
+            }
+        }
+
+        // Cleanup uploaded file
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            message: "Bulk upload processing complete",
+            summary: {
+                total: rows.length,
+                inserted: results.insertedCount,
+                failed: results.failedCount
+            },
+            errors: results.errors
+        });
+
+    } catch (error) {
+        console.error("Bulk upload error:", error);
+        // Attempt cleanup
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ message: "Failed to process bulk upload file", error: error.message });
+    }
+});
+
+// CREATE Asset
+router.post("/", validateAssetData, async (req, res) => {
+  try {
+    const asset = new Asset(req.body);
+    const savedAsset = await asset.save();
+    res.status(201).json(savedAsset);
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Asset tag must be unique' });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+// GET All Assets
+router.get("/", async (req, res) => {
+  try {
+    const assets = await Asset.find();
+    res.json(assets);
+  } catch (error) {
+    console.error('Error fetching assets:', error);
+    res.status(500).json({ message: 'Failed to fetch assets' });
+  }
+});
+
+// GET Asset by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const asset = await Asset.findById(req.params.id);
+    if (!asset) return res.status(404).json({ message: "Asset not found" });
+    res.json(asset);
+  } catch (error) {
+    if (error.name === 'CastError') {
+      res.status(400).json({ message: 'Invalid asset ID format' });
+    } else {
+      console.error('Error fetching asset:', error);
+      res.status(500).json({ message: 'Failed to fetch asset' });
+    }
+  }
+});
+
+// UPDATE Asset
+router.put("/:id", validateAssetData, async (req, res) => {
+  try {
+    const updatedAsset = await Asset.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedAsset) return res.status(404).json({ message: "Asset not found" });
+    res.json(updatedAsset);
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Asset tag must be unique' });
+    } else if (error.name === 'CastError') {
+      res.status(400).json({ message: 'Invalid asset ID format' });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+// DELETE Asset
+router.delete("/:id", async (req, res) => {
+  try {
+    const deletedAsset = await Asset.findByIdAndDelete(req.params.id);
+    if (!deletedAsset) return res.status(404).json({ message: "Asset not found" });
+    res.json({ message: "Asset deleted successfully" });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      res.status(400).json({ message: 'Invalid asset ID format' });
+    } else {
+      console.error('Error deleting asset:', error);
+      res.status(500).json({ message: 'Failed to delete asset' });
+    }
+  }
+});
+
+module.exports = router;

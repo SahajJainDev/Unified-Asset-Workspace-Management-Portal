@@ -1,0 +1,7 @@
+{
+  "name": "AssetTrack Pro",
+  "description": "An enterprise-grade IT asset management platform for tracking hardware, software licenses, and floor-plan utilization with robust reporting and compliance features.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
