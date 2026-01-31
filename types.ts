@@ -96,6 +96,8 @@ export interface Employee {
   fullName: string;
   email?: string;
   department?: string;
+  role?: 'Admin' | 'Employee';
+  isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

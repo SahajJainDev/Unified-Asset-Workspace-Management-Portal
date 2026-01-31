@@ -40,8 +40,17 @@ router.get("/stats", async (req, res) => {
     // Total assets
     const totalAssets = await Asset.countDocuments();
 
-    // Software with expiring licenses (mock data for now - would need license expiry logic)
-    const expiringLicenses = await Software.countDocuments({ status: 'Expiring Soon' });
+    // Software with expiring licenses (Real Data)
+    const License = require("../models/License");
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const expiringLicenses = await License.countDocuments({
+      expiryDate: {
+        $gte: new Date(),
+        $lte: thirtyDaysFromNow
+      }
+    });
 
     // Recent activities (mock data - would need activity log model)
     const recentActivities = [
@@ -60,7 +69,7 @@ router.get("/stats", async (req, res) => {
     // Reserved is not currently tracked effectively in Excel/Model logic, usually specific status. 
     // If not tracked, set to 0 or imply from other logic. For now, 0 or check if 'Reserved' status exists.
     // Based on Desk.js model, status enum is ['Available', 'Occupied']. So Reserved is 0.
-    const reservedDesks = 0; 
+    const reservedDesks = 0;
 
     const deskStatus = {
       occupied: occupiedDesks,
@@ -71,8 +80,8 @@ router.get("/stats", async (req, res) => {
 
     // Helper for Asset Colors
     const getAssetColor = (index) => {
-        const colors = ['#137fec', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'];
-        return colors[index % colors.length];
+      const colors = ['#137fec', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'];
+      return colors[index % colors.length];
     };
 
     // Verification stats from database
@@ -104,6 +113,49 @@ router.get("/stats", async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
+  }
+});
+
+// GET Software Statistics for Cards
+router.get("/software-stats", async (req, res) => {
+  try {
+    const softwareList = await Software.find();
+
+    const totalLicenses = softwareList.reduce((sum, sw) => sum + sw.totalSeats, 0);
+
+    let totalUtil = 0;
+    let count = 0;
+    softwareList.forEach(sw => {
+      if (sw.totalSeats > 0) {
+        totalUtil += (sw.usedSeats / sw.totalSeats);
+        count++;
+      }
+    });
+    const utilizationAvg = count > 0 ? Math.round((totalUtil / count) * 100) : 0;
+
+    // Renewals Pending (Licenses expiring in 30 days)
+    // Need to query License model, so import needed if not present
+    // But dashboardRoutes already imports models/Software. License model not imported?
+    const License = require("../models/License");
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const pendingRenewals = await License.countDocuments({
+      expiryDate: {
+        $gte: new Date(),
+        $lte: thirtyDaysFromNow
+      }
+    });
+
+    res.json([
+      { label: 'Total Licenses', value: totalLicenses.toLocaleString(), icon: 'package_2', trend: '+0' }, // Trend logic can be refined later
+      { label: 'Utilization Avg', value: `${utilizationAvg}%`, icon: 'group_work', trend: 'Avg' },
+      { label: 'Renewals Pending', value: pendingRenewals.toString(), icon: 'event_repeat', trend: 'Next: 30 days' },
+    ]);
+
+  } catch (error) {
+    console.error("Error fetching software stats:", error);
+    res.status(500).json({ message: "Failed to fetch software stats" });
   }
 });
 

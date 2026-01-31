@@ -25,12 +25,45 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
+const Software = require("../models/Software"); // Import Software model
+
 // CREATE License
 router.post("/", licenseValidationRules, handleValidationErrors, async (req, res) => {
   try {
     const license = new License(req.body);
     const savedLicense = await license.save();
-    res.status(201).json({ success: true, message: 'License created successfully', data: savedLicense });
+
+    // Aggregate into Software collection
+    const softwareName = req.body.softwareName;
+    const seatsToAdd = req.body.seatsLimit || 1;
+
+    // Check if software exists
+    let software = await Software.findOne({ name: softwareName });
+
+    if (software) {
+      // Update existing software
+      software.totalSeats += seatsToAdd;
+      // Recalculate utilization? (usedSeats remains same, utilization % changes)
+      if (software.totalSeats > 0) {
+        software.utilizationPercentage = Math.round((software.usedSeats / software.totalSeats) * 100);
+      }
+      await software.save();
+    } else {
+      // Create new software entry
+      software = new Software({
+        name: softwareName,
+        version: req.body.version || 'Web-based',
+        totalSeats: seatsToAdd,
+        usedSeats: 0,
+        utilizationPercentage: 0,
+        status: 'Active',
+        statusColor: 'green',
+        icon: 'extension' // Default icon
+      });
+      await software.save();
+    }
+
+    res.status(201).json({ success: true, message: 'License created successfully and software updated', data: savedLicense });
   } catch (error) {
     if (error.code === 11000) {
       res.status(400).json({ success: false, message: 'License key must be unique' });
@@ -70,12 +103,30 @@ router.get("/:id", async (req, res) => {
 // UPDATE License
 router.put("/:id", licenseValidationRules, handleValidationErrors, async (req, res) => {
   try {
+    const oldLicense = await License.findById(req.params.id);
+    if (!oldLicense) return res.status(404).json({ message: "License not found" });
+
     const updatedLicense = await License.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-    if (!updatedLicense) return res.status(404).json({ message: "License not found" });
+
+    // If seatsLimit changed, update Software aggregation
+    if (req.body.seatsLimit !== undefined && req.body.seatsLimit !== oldLicense.seatsLimit) {
+      const softwareName = updatedLicense.softwareName;
+      const seatsDiff = (req.body.seatsLimit || 0) - (oldLicense.seatsLimit || 0);
+
+      const software = await Software.findOne({ name: softwareName });
+      if (software) {
+        software.totalSeats += seatsDiff;
+        if (software.totalSeats > 0) {
+          software.utilizationPercentage = Math.round((software.usedSeats / software.totalSeats) * 100);
+        }
+        await software.save();
+      }
+    }
+
     res.json(updatedLicense);
   } catch (error) {
     if (error.code === 11000) {

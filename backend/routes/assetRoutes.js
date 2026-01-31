@@ -11,8 +11,8 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = 'uploads/';
     // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)){
-        fs.mkdirSync(uploadDir);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
     }
     cb(null, uploadDir);
   },
@@ -32,13 +32,13 @@ const validateAssetData = (req, res, next) => {
 
   const validAssetTypes = ['Laptop', 'Monitor', 'Mouse', 'Keyboard', 'Smartphone', 'Tablet', 'Other'];
   if (assetType && !validAssetTypes.includes(assetType)) {
-      // Allow it to pass if not provided (will use default), but if provided must be valid.
-      // However the strictly typed requirement suggests we should validate.
-      // Existing code enforced it, so we keep it. but 'default' is 'Laptop' in schema.
-      return res.status(400).json({ message: 'Invalid asset type' });
+    // Allow it to pass if not provided (will use default), but if provided must be valid.
+    // However the strictly typed requirement suggests we should validate.
+    // Existing code enforced it, so we keep it. but 'default' is 'Laptop' in schema.
+    return res.status(400).json({ message: 'Invalid asset type' });
   }
 
-  const validStatuses = ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged']; 
+  const validStatuses = ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged'];
   // Updated to include new statuses
   if (!status || !validStatuses.includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
@@ -51,118 +51,118 @@ const validateAssetData = (req, res, next) => {
 
 // BULK UPLOAD Assets
 router.post("/bulk-upload", upload.single('file'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-    }
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
+  }
 
-    const results = {
-        insertedCount: 0,
-        failedCount: 0,
-        errors: []
-    };
+  const results = {
+    insertedCount: 0,
+    failedCount: 0,
+    errors: []
+  };
 
-    try {
-        const workbook = xlsx.readFile(req.file.path);
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = xlsx.utils.sheet_to_json(sheet);
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = xlsx.utils.sheet_to_json(sheet);
 
-        for (let i = 0; i < rows.length; i++) {
-            const rowData = rows[i];
-            const rowNumber = i + 2; // Excel row number (1-based header is 1)
+    for (let i = 0; i < rows.length; i++) {
+      const rowData = rows[i];
+      const rowNumber = i + 2; // Excel row number (1-based header is 1)
 
-            try {
-                // Map Excel columns to Asset model fields
-                // Excel Column Structure (Mandatory)
-                // Asset Id, Asset Name, Asset Description / Location, Warranty Expires On, Asset Condition, Asset Status, Reason, if Not Available, Employee Number, if Assigned, Employee Name if Assigned, Employee Department if Assigned, Employee Sub Department if Assigned, Date of Asset Assignment, Invoice No, Vendor Name, PO, Asset Serial/Tag, RAM, Processor, HDD, Asset Model, Make
+      try {
+        // Map Excel columns to Asset model fields
+        // Excel Column Structure (Mandatory)
+        // Asset Id, Asset Name, Asset Description / Location, Warranty Expires On, Asset Condition, Asset Status, Reason, if Not Available, Employee Number, if Assigned, Employee Name if Assigned, Employee Department if Assigned, Employee Sub Department if Assigned, Date of Asset Assignment, Invoice No, Vendor Name, PO, Asset Serial/Tag, RAM, Processor, HDD, Asset Model, Make
 
-                const mappedAsset = {
-                    assetTag: rowData['Asset Id'],
-                    assetName: rowData['Asset Name'],
-                    description: rowData['Asset Description / Location'],
-                    warrantyExpiry: rowData['Warranty Expires On'], // Date parsing might be needed
-                    condition: rowData['Asset Condition'],
-                    status: rowData['Asset Status'],
-                    reasonNotAvailable: rowData['Reason, if Not Available'],
-                    assignmentDate: rowData['Date of Asset Assignment'],
-                    invoiceNumber: rowData['Invoice No'],
-                    vendorName: rowData['Vendor Name'],
-                    purchaseOrderNumber: rowData['PO'],
-                    serialNumber: rowData['Asset Serial/Tag'] || rowData['Asset Serial'], // Handle potential naming variations
-                    model: rowData['Asset Model'],
-                    make: rowData['Make'],
-                    specs: {
-                        memory: rowData['RAM'],
-                        processor: rowData['Processor'],
-                        storage: rowData['HDD']
-                    },
-                    employee: {}
-                };
+        const mappedAsset = {
+          assetTag: rowData['Asset Id'],
+          assetName: rowData['Asset Name'],
+          description: rowData['Asset Description / Location'],
+          warrantyExpiry: rowData['Warranty Expires On'], // Date parsing might be needed
+          condition: rowData['Asset Condition'],
+          status: rowData['Asset Status'],
+          reasonNotAvailable: rowData['Reason, if Not Available'],
+          assignmentDate: rowData['Date of Asset Assignment'],
+          invoiceNumber: rowData['Invoice No'],
+          vendorName: rowData['Vendor Name'],
+          purchaseOrderNumber: rowData['PO'],
+          serialNumber: rowData['Asset Serial/Tag'] || rowData['Asset Serial'], // Handle potential naming variations
+          model: rowData['Asset Model'],
+          make: rowData['Make'],
+          specs: {
+            memory: rowData['RAM'],
+            processor: rowData['Processor'],
+            storage: rowData['HDD']
+          },
+          employee: {}
+        };
 
-                // Validate Status and Employee fields
-                if (mappedAsset.status === 'Assigned') {
-                    if (!rowData['Employee Number, if Assigned'] || !rowData['Employee Name if Assigned']) {
-                        throw new Error(`Row ${rowNumber}: Status is Assigned but Employee Number or Name is missing.`);
-                    }
-                    mappedAsset.employee = {
-                        number: rowData['Employee Number, if Assigned'],
-                        name: rowData['Employee Name if Assigned'],
-                        department: rowData['Employee Department if Assigned'],
-                        subDepartment: rowData['Employee Sub Department if Assigned']
-                    };
-                }
-
-                // Basic Validation (Check required fields)
-                if (!mappedAsset.assetName) throw new Error(`Row ${rowNumber}: Asset Name is required.`);
-                if (!mappedAsset.assetTag) throw new Error(`Row ${rowNumber}: Asset Id (Tag) is required.`);
-
-                // Check for duplicate Asset Tag in DB
-                const existingAsset = await Asset.findOne({ assetTag: mappedAsset.assetTag });
-                if (existingAsset) {
-                    throw new Error(`Row ${rowNumber}: Asset Tag ${mappedAsset.assetTag} already exists.`);
-                }
-
-                // Determine Asset Type? Assuming 'Laptop' or trying to infer?
-                // For now, we'll let it default to 'Laptop' or 'Other' if not specified in Excel,
-                // but Excel doesn't have an 'Asset Type' column listed in requirements. 
-                // We'll leave it as default or infer from 'Asset Name' if we wanted to be fancy.
-                // Keeping it default 'Laptop' as per Schema default for now.
-
-                const newAsset = new Asset(mappedAsset);
-                await newAsset.save();
-                results.insertedCount++;
-
-            } catch (error) {
-                results.failedCount++;
-                results.errors.push({
-                    row: rowNumber,
-                    message: error.message,
-                    data: rowData
-                });
-            }
+        // Validate Status and Employee fields
+        if (mappedAsset.status === 'Assigned') {
+          if (!rowData['Employee Number, if Assigned'] || !rowData['Employee Name if Assigned']) {
+            throw new Error(`Row ${rowNumber}: Status is Assigned but Employee Number or Name is missing.`);
+          }
+          mappedAsset.employee = {
+            number: rowData['Employee Number, if Assigned'],
+            name: rowData['Employee Name if Assigned'],
+            department: rowData['Employee Department if Assigned'],
+            subDepartment: rowData['Employee Sub Department if Assigned']
+          };
         }
 
-        // Cleanup uploaded file
-        fs.unlinkSync(req.file.path);
+        // Basic Validation (Check required fields)
+        if (!mappedAsset.assetName) throw new Error(`Row ${rowNumber}: Asset Name is required.`);
+        if (!mappedAsset.assetTag) throw new Error(`Row ${rowNumber}: Asset Id (Tag) is required.`);
 
-        res.json({
-            message: "Bulk upload processing complete",
-            summary: {
-                total: rows.length,
-                inserted: results.insertedCount,
-                failed: results.failedCount
-            },
-            errors: results.errors
+        // Check for duplicate Asset Tag in DB
+        const existingAsset = await Asset.findOne({ assetTag: mappedAsset.assetTag });
+        if (existingAsset) {
+          throw new Error(`Row ${rowNumber}: Asset Tag ${mappedAsset.assetTag} already exists.`);
+        }
+
+        // Determine Asset Type? Assuming 'Laptop' or trying to infer?
+        // For now, we'll let it default to 'Laptop' or 'Other' if not specified in Excel,
+        // but Excel doesn't have an 'Asset Type' column listed in requirements. 
+        // We'll leave it as default or infer from 'Asset Name' if we wanted to be fancy.
+        // Keeping it default 'Laptop' as per Schema default for now.
+
+        const newAsset = new Asset(mappedAsset);
+        await newAsset.save();
+        results.insertedCount++;
+
+      } catch (error) {
+        results.failedCount++;
+        results.errors.push({
+          row: rowNumber,
+          message: error.message,
+          data: rowData
         });
-
-    } catch (error) {
-        console.error("Bulk upload error:", error);
-        // Attempt cleanup
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
-        res.status(500).json({ message: "Failed to process bulk upload file", error: error.message });
+      }
     }
+
+    // Cleanup uploaded file
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      message: "Bulk upload processing complete",
+      summary: {
+        total: rows.length,
+        inserted: results.insertedCount,
+        failed: results.failedCount
+      },
+      errors: results.errors
+    });
+
+  } catch (error) {
+    console.error("Bulk upload error:", error);
+    // Attempt cleanup
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ message: "Failed to process bulk upload file", error: error.message });
+  }
 });
 
 // CREATE Asset
@@ -183,7 +183,22 @@ router.post("/", validateAssetData, async (req, res) => {
 // GET All Assets
 router.get("/", async (req, res) => {
   try {
-    const assets = await Asset.find();
+    const filter = {};
+    if (req.query.assignedTo) {
+      // assets stored employee.number as string
+      filter['employee.number'] = req.query.assignedTo;
+    }
+    if (req.query.status) {
+      filter['status'] = req.query.status;
+      if (req.query.status === 'Available') {
+        filter['$or'] = [
+          { 'employee.number': { $exists: false } },
+          { 'employee.number': null },
+          { 'employee.number': '' }
+        ];
+      }
+    }
+    const assets = await Asset.find(filter);
     res.json(assets);
   } catch (error) {
     console.error('Error fetching assets:', error);
@@ -197,22 +212,22 @@ router.get("/:id", async (req, res) => {
   try {
     let asset;
     const { ObjectId } = require('mongoose').Types;
-    
+
     // Check if valid ObjectId
     if (ObjectId.isValid(req.params.id)) {
-        asset = await Asset.findById(req.params.id);
+      asset = await Asset.findById(req.params.id);
     }
-    
+
     // If not found by ID or not a valid ID, try searching by assetTags
     if (!asset) {
-        asset = await Asset.findOne({ assetTag: req.params.id });
+      asset = await Asset.findOne({ assetTag: req.params.id });
     }
 
     if (!asset) return res.status(404).json({ message: "Asset not found" });
     res.json(asset);
   } catch (error) {
-     console.error('Error fetching asset:', error);
-     res.status(500).json({ message: 'Failed to fetch asset' });
+    console.error('Error fetching asset:', error);
+    res.status(500).json({ message: 'Failed to fetch asset' });
   }
 });
 
@@ -224,9 +239,9 @@ router.put("/:id", validateAssetData, async (req, res) => {
     const { ObjectId } = require('mongoose').Types;
 
     if (ObjectId.isValid(req.params.id)) {
-        query = { _id: req.params.id };
+      query = { _id: req.params.id };
     } else {
-        query = { assetTag: req.params.id };
+      query = { assetTag: req.params.id };
     }
 
     const updatedAsset = await Asset.findOneAndUpdate(
@@ -249,45 +264,45 @@ router.put("/:id", validateAssetData, async (req, res) => {
 // DELETE Asset
 // DELETE Batch Assets
 router.post("/delete-batch", async (req, res) => {
-    try {
-        const { ids } = req.body;
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ message: "No IDs provided" });
-        }
-
-        const { ObjectId } = require('mongoose').Types;
-        
-        // This logic handles both _ids and assetTags, similar to our single delete/get logic
-        // We find docs that match _id IN ids OR assetTag IN ids
-        
-        // Split ids into valid ObjectIds and others (assumed tags)
-        const objectIds = ids.filter(id => ObjectId.isValid(id));
-        const otherIds = ids.filter(id => !ObjectId.isValid(id));
-        
-        const result = await Asset.deleteMany({
-            $or: [
-                { _id: { $in: objectIds } },
-                { assetTag: { $in: otherIds } },
-                { assetTag: { $in: objectIds } } // In case an assetTag looks like an ObjectId? Unlikely but possible
-            ]
-        });
-
-        res.json({ message: "Assets deleted successfully", count: result.deletedCount });
-    } catch (error) {
-        console.error('Error deleting assets:', error);
-        res.status(500).json({ message: 'Failed to delete assets' });
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "No IDs provided" });
     }
+
+    const { ObjectId } = require('mongoose').Types;
+
+    // This logic handles both _ids and assetTags, similar to our single delete/get logic
+    // We find docs that match _id IN ids OR assetTag IN ids
+
+    // Split ids into valid ObjectIds and others (assumed tags)
+    const objectIds = ids.filter(id => ObjectId.isValid(id));
+    const otherIds = ids.filter(id => !ObjectId.isValid(id));
+
+    const result = await Asset.deleteMany({
+      $or: [
+        { _id: { $in: objectIds } },
+        { assetTag: { $in: otherIds } },
+        { assetTag: { $in: objectIds } } // In case an assetTag looks like an ObjectId? Unlikely but possible
+      ]
+    });
+
+    res.json({ message: "Assets deleted successfully", count: result.deletedCount });
+  } catch (error) {
+    console.error('Error deleting assets:', error);
+    res.status(500).json({ message: 'Failed to delete assets' });
+  }
 });
 
 // DELETE All Assets
 router.delete("/all-assets", async (req, res) => {
-    try {
-        const result = await Asset.deleteMany({});
-        res.json({ message: "All assets deleted successfully", count: result.deletedCount });
-    } catch (error) {
-        console.error('Error deleting all assets:', error);
-        res.status(500).json({ message: 'Failed to delete all assets' });
-    }
+  try {
+    const result = await Asset.deleteMany({});
+    res.json({ message: "All assets deleted successfully", count: result.deletedCount });
+  } catch (error) {
+    console.error('Error deleting all assets:', error);
+    res.status(500).json({ message: 'Failed to delete all assets' });
+  }
 });
 
 // DELETE Asset
@@ -295,20 +310,20 @@ router.delete("/:id", async (req, res) => {
   try {
     let deletedAsset;
     const { ObjectId } = require('mongoose').Types;
-    
+
     if (ObjectId.isValid(req.params.id)) {
-        deletedAsset = await Asset.findByIdAndDelete(req.params.id);
+      deletedAsset = await Asset.findByIdAndDelete(req.params.id);
     }
-    
+
     if (!deletedAsset) {
-        deletedAsset = await Asset.findOneAndDelete({ assetTag: req.params.id });
+      deletedAsset = await Asset.findOneAndDelete({ assetTag: req.params.id });
     }
-    
+
     if (!deletedAsset) return res.status(404).json({ message: "Asset not found" });
     res.json({ message: "Asset deleted successfully" });
   } catch (error) {
-      console.error('Error deleting asset:', error);
-      res.status(500).json({ message: 'Failed to delete asset' });
+    console.error('Error deleting asset:', error);
+    res.status(500).json({ message: 'Failed to delete asset' });
   }
 });
 
