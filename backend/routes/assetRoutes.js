@@ -145,6 +145,17 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
     // Cleanup uploaded file
     fs.unlinkSync(req.file.path);
 
+    // Activity Log
+    if (results.insertedCount > 0) {
+        await logActivity(
+            'Assets Imported',
+            `Bulk upload added ${results.insertedCount} new assets`,
+            'cloud_upload',
+            'bg-indigo-50 text-indigo-600',
+            'asset'
+        );
+    }
+
     res.json({
       message: "Bulk upload processing complete",
       summary: {
@@ -170,6 +181,18 @@ router.post("/", validateAssetData, async (req, res) => {
   try {
     const asset = new Asset(req.body);
     const savedAsset = await asset.save();
+    
+    // Log Creation
+    const actor = req.body.addedBy || 'System';
+
+    await logActivity(
+        'New Asset Added',
+        `${actor} added ${savedAsset.assetName} (${savedAsset.assetTag}) to inventory`,
+        'add_circle',
+        'bg-green-50 text-green-600',
+        'asset'
+    );
+
     res.status(201).json(savedAsset);
   } catch (error) {
     if (error.code === 11000) {
@@ -244,6 +267,9 @@ router.put("/:id", validateAssetData, async (req, res) => {
       query = { assetTag: req.params.id };
     }
 
+    // Get original for comparison
+    const originalAsset = await Asset.findOne(query);
+
     const updatedAsset = await Asset.findOneAndUpdate(
       query,
       req.body,
@@ -251,6 +277,40 @@ router.put("/:id", validateAssetData, async (req, res) => {
     );
 
     if (!updatedAsset) return res.status(404).json({ message: "Asset not found" });
+
+    // Log Assignment Changes
+    const actor = req.body.modifiedBy || req.body.addedBy || 'Admin';
+
+    if (originalAsset) {
+        // Check if assignedTo changed
+        if (updatedAsset.status === 'Assigned' && originalAsset.status !== 'Assigned') {
+             const assignee = updatedAsset.employee?.name || updatedAsset.assignedTo || 'Employee';
+             await logActivity(
+                'Asset Assigned',
+                `${actor} assigned ${updatedAsset.assetName} ${updatedAsset.assetTag} to ${assignee}`,
+                'assignment_ind',
+                'bg-blue-50 text-blue-600',
+                'asset'
+            );
+        } else if (updatedAsset.status === 'Available' && originalAsset.status === 'Assigned') {
+            await logActivity(
+                'Asset Returned',
+                `${updatedAsset.assetName} ${updatedAsset.assetTag} returned to inventory by ${actor}`,
+                'assignment_return',
+                'bg-gray-50 text-gray-600',
+                'asset'
+            );
+        } else if (updatedAsset.status === 'REPAIR' && originalAsset.status !== 'REPAIR') {
+             await logActivity(
+                'Asset Repair',
+                `${updatedAsset.assetName} ${updatedAsset.assetTag} sent for repair by ${actor}`,
+                'build',
+                'bg-orange-50 text-orange-600',
+                'maintenance'
+            );
+        }
+    }
+
     res.json(updatedAsset);
   } catch (error) {
     if (error.code === 11000) {
@@ -305,6 +365,8 @@ router.delete("/all-assets", async (req, res) => {
   }
 });
 
+const { logActivity } = require('../utils/activityLogger');
+
 // DELETE Asset
 router.delete("/:id", async (req, res) => {
   try {
@@ -320,6 +382,16 @@ router.delete("/:id", async (req, res) => {
     }
 
     if (!deletedAsset) return res.status(404).json({ message: "Asset not found" });
+
+    // Log Deletion
+    await logActivity(
+        'Asset Deleted',
+        `${deletedAsset.assetName} (${deletedAsset.assetTag}) removed from system`,
+        'delete',
+        'bg-red-50 text-red-600',
+        'asset'
+    );
+
     res.json({ message: "Asset deleted successfully" });
   } catch (error) {
     console.error('Error deleting asset:', error);

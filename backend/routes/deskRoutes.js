@@ -18,6 +18,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const { logActivity } = require('../utils/activityLogger');
+
 // BULK UPLOAD Desks
 router.post("/bulk-upload", upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -106,6 +108,14 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
 
         fs.unlinkSync(req.file.path);
         
+        await logActivity(
+            'Floor Map Updated',
+            `Bulk upload processed ${results.upsertedCount} desks`,
+            'map',
+            'bg-indigo-50 text-indigo-600',
+            'other'
+        );
+
         res.json({
             message: "Bulk upload complete",
             summary: {
@@ -137,7 +147,7 @@ router.get("/", async (req, res) => {
 // UPDATE Desk
 router.put("/:id", async (req, res) => {
   try {
-    const { empId } = req.body;
+    const { empId, userName } = req.body;
 
     // Check for duplicate EMP ID if one is provided
     if (empId && String(empId).trim() !== '') {
@@ -156,10 +166,10 @@ router.put("/:id", async (req, res) => {
     // Auto-determine status based on EMP ID presence
     const status = (empId && String(empId).trim() !== '') ? 'Occupied' : 'Available';
     
-    // Inject status into body (overriding any client sent status if strictly following logic, 
-    // or just let client send it? User said "on click on edit only emp id should we editable", 
-    // implying status is derived or fixed. Let's auto-derive it to be safe.)
+    // Inject status into body
     req.body.status = status;
+
+    const originalDesk = await Desk.findById(req.params.id);
 
     const updatedDesk = await Desk.findByIdAndUpdate(
       req.params.id,
@@ -167,6 +177,29 @@ router.put("/:id", async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!updatedDesk) return res.status(404).json({ message: "Desk not found" });
+
+    // Log Activity
+    const actor = req.body.modifiedBy || 'Admin'; // Default actor if not provided
+
+    if (status === 'Occupied' && originalDesk.status !== 'Occupied') {
+        const whoStr = userName ? `${userName}` : `Emp ${empId}`;
+        await logActivity(
+            'Seat Assigned',
+            `${actor} assigned Seat ${updatedDesk.workstationId} to ${whoStr}`,
+            'person_add',
+            'bg-green-50 text-green-600',
+            'reservation'
+        );
+    } else if (status === 'Available' && originalDesk.status === 'Occupied') {
+        await logActivity(
+            'Seat Unassigned',
+            `Seat ${originalDesk.workstationId} was unassigned by ${actor}`,
+            'person_remove',
+            'bg-gray-50 text-gray-600',
+            'reservation'
+        );
+    }
+
     res.json(updatedDesk);
   } catch (error) {
       res.status(400).json({ message: error.message });

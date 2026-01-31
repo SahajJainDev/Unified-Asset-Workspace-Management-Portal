@@ -34,6 +34,30 @@ const FloorMapPage: React.FC = () => {
         fetchDesks();
     }, []);
 
+    // Helper for Project Colors
+    const getProjectColor = (project: string) => {
+        if (!project) return 'bg-gray-50 border-gray-200';
+        
+        // Hash the project string to select a color
+        let hash = 0;
+        for (let i = 0; i < project.length; i++) {
+            hash = project.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colors = [
+            'bg-blue-100 border-blue-300 text-blue-800',
+            'bg-green-100 border-green-300 text-green-800',
+            'bg-purple-100 border-purple-300 text-purple-800',
+            'bg-amber-100 border-amber-300 text-amber-800',
+            'bg-rose-100 border-rose-300 text-rose-800',
+            'bg-cyan-100 border-cyan-300 text-cyan-800',
+            'bg-indigo-100 border-indigo-300 text-indigo-800',
+            'bg-teal-100 border-teal-300 text-teal-800'
+        ];
+        
+        return colors[Math.abs(hash) % colors.length];
+    };
+
     // Group desks by Block
     const blocks = useMemo(() => {
         const groups: Record<string, Desk[]> = {};
@@ -96,14 +120,52 @@ const FloorMapPage: React.FC = () => {
         setIsEditModalOpen(true);
     };
 
+    const handleUnassign = async () => {
+        if (!selectedDesk?._id) return;
+        if (!window.confirm(`Are you sure you want to unassign seat ${selectedDesk.workstationId}?`)) return;
+
+        try {
+            const emptyData = {
+                empId: '',
+                userName: '',
+                project: '',
+                manager: '',
+                status: 'Available',
+                modifiedBy: 'Admin' // In real app, get from auth context
+            };
+
+            const res = await fetch(`http://localhost:5000/api/desks/${selectedDesk._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(emptyData)
+            });
+            
+            if (res.ok) {
+                setIsEditModalOpen(false);
+                fetchDesks();
+            } else {
+                const err = await res.json();
+                alert(err.message || 'Failed to unassign seat');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error unassigning seat');
+        }
+    };
+
     const handleSaveEdit = async () => {
         if (!selectedDesk?._id) return;
         
         try {
+            const payload = {
+                ...editForm,
+                modifiedBy: 'Admin' // In real app, get from auth context
+            };
+
             const res = await fetch(`http://localhost:5000/api/desks/${selectedDesk._id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editForm)
+                body: JSON.stringify(payload)
             });
             
             if (res.ok) {
@@ -176,27 +238,30 @@ const FloorMapPage: React.FC = () => {
                                         </span>
                                     </div>
                                     <div className="p-4 grid grid-cols-4 sm:grid-cols-5 gap-2 content-start flex-1">
-                                        {blockDesks.map(desk => (
-                                            <div 
-                                                key={desk._id}
-                                                onClick={() => handleSeatClick(desk)}
-                                                className={`
-                                                    aspect-square rounded-lg flex flex-col items-center justify-center p-1 cursor-pointer transition-all border
-                                                    ${desk.status === 'Occupied' 
-                                                        ? 'bg-primary/10 border-primary/30 hover:bg-primary/20 dark:bg-primary/20 dark:border-primary/40' 
-                                                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700'
-                                                    }
-                                                `}
-                                                title={desk.userName ? `Assigned to: ${desk.userName}` : 'Available'}
-                                            >
-                                                <span className={`text-[10px] font-bold ${desk.status === 'Occupied' ? 'text-primary dark:text-blue-300' : 'text-gray-400'}`}>
-                                                    {desk.workstationId}
-                                                </span>
-                                                {desk.status === 'Occupied' && (
-                                                    <span className="material-symbols-outlined text-[14px] text-primary dark:text-blue-300 mt-0.5">person</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                        {blockDesks.map(desk => {
+                                            const isOccupied = desk.status === 'Occupied';
+                                            const colorClass = isOccupied ? getProjectColor(desk.project) : 'bg-gray-50 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700';
+                                            
+                                            return (
+                                                <div 
+                                                    key={desk._id}
+                                                    onClick={() => handleSeatClick(desk)}
+                                                    className={`
+                                                        aspect-square rounded-lg flex flex-col items-center justify-center p-1 cursor-pointer transition-all border
+                                                        ${colorClass}
+                                                        ${isOccupied ? 'hover:brightness-95' : ''}
+                                                    `}
+                                                    title={desk.userName ? `Assigned to: ${desk.userName}\nProject: ${desk.project}` : 'Available'}
+                                                >
+                                                    <span className={`text-[10px] font-bold ${isOccupied ? 'text-inherit opacity-80' : 'text-gray-400'}`}>
+                                                        {desk.workstationId}
+                                                    </span>
+                                                    {isOccupied && (
+                                                        <span className="material-symbols-outlined text-[14px] opacity-70 mt-0.5">person</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                     <div className="p-2 border-t border-gray-100 dark:border-gray-800 flex text-[10px] text-gray-400 justify-between px-4">
                                          <span>Occ: {blockDesks.filter(s => s.status === 'Occupied').length}</span>
@@ -340,11 +405,16 @@ const FloorMapPage: React.FC = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Project (Read Only)</label>
-                                        <input 
-                                            className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
-                                            value={editForm.project}
-                                            readOnly
-                                        />
+                                        <div className="relative">
+                                            <input 
+                                                className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                                                value={editForm.project}
+                                                readOnly
+                                            />
+                                            {editForm.project && (
+                                                <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border shadow-sm ${getProjectColor(editForm.project!).split(' ')[0]}`}></div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Manager (Read Only)</label>
@@ -356,9 +426,21 @@ const FloorMapPage: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
-                                <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:text-gray-800 dark:text-gray-300">Cancel</button>
-                                <button onClick={handleSaveEdit} className="px-4 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20">Save Changes</button>
+                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 flex justify-between bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
+                                {selectedDesk?.status === 'Occupied' ? (
+                                    <button 
+                                        onClick={handleUnassign}
+                                        className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+                                    >
+                                        Unassign Seat
+                                    </button>
+                                ) : (
+                                    <div></div> // Spacer
+                                )}
+                                <div className="flex gap-3">
+                                    <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:text-gray-800 dark:text-gray-300">Cancel</button>
+                                    <button onClick={handleSaveEdit} className="px-4 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20">Save Changes</button>
+                                </div>
                             </div>
                         </div>
                     </div>

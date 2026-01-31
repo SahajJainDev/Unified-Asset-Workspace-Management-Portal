@@ -52,24 +52,19 @@ router.get("/stats", async (req, res) => {
       }
     });
 
-    // Recent activities (mock data - would need activity log model)
-    const recentActivities = [
-      { title: 'MacBook Pro assigned', user: 'Assigned to Sarah Jenkins (Design)', time: '2m ago', icon: 'laptop_mac', color: 'bg-blue-50 text-blue-600' },
-      { title: 'License Expired', user: 'Adobe Creative Cloud (10 seats)', time: '1h ago', icon: 'warning', color: 'bg-amber-50 text-amber-600' },
-      { title: 'Maintenance Complete', user: 'Server Room B cooling system check', time: '3h ago', icon: 'check_circle', color: 'bg-emerald-50 text-emerald-600' },
-      { title: 'Desk Reservation', user: 'Mike Ross reserved Desk 4B-12', time: '5h ago', icon: 'event_seat', color: 'bg-purple-50 text-purple-600' },
-      { title: 'Policy Update', user: 'Remote Work Equipment Policy v2.1', time: '1d ago', icon: 'description', color: 'bg-slate-50 text-slate-600' },
-    ];
+    // Recent activities (Real Data)
+    const recentActivities = await Activity.find()
+      .sort({ timestamp: -1 })
+      .limit(6) // Limit to 6 recent items
+      .lean(); // Return plain objects
 
-    // Desk status (mock data - would need desk model)
+    // If no activities yet, sending empty array is fine, frontend handles it.
+
     // Desk status (Real Data)
     const totalDesks = await Desk.countDocuments();
     const occupiedDesks = await Desk.countDocuments({ status: 'Occupied' });
     const availableDesks = await Desk.countDocuments({ status: 'Available' });
-    // Reserved is not currently tracked effectively in Excel/Model logic, usually specific status. 
-    // If not tracked, set to 0 or imply from other logic. For now, 0 or check if 'Reserved' status exists.
-    // Based on Desk.js model, status enum is ['Available', 'Occupied']. So Reserved is 0.
-    const reservedDesks = 0;
+    const reservedDesks = 0; // Keeping 0 as per previous logic
 
     const deskStatus = {
       occupied: occupiedDesks,
@@ -106,7 +101,13 @@ router.get("/stats", async (req, res) => {
       expiringLicenses,
       deskStatus,
       verificationStats,
-      recentActivities
+      recentActivities: recentActivities.map(activity => ({
+        title: activity.title,
+        user: activity.user,
+        time: getTimeAgo(activity.timestamp),
+        icon: activity.icon || 'notifications',
+        color: activity.color || 'bg-blue-50 text-blue-600'
+      }))
     };
 
     res.json(stats);
