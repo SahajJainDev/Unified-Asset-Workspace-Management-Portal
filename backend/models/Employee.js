@@ -21,6 +21,15 @@ const employeeSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  role: {
+    type: String,
+    enum: ['Admin', 'Employee'],
+    default: 'Employee'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true

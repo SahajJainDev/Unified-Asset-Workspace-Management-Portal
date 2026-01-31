@@ -17,6 +17,8 @@ import EmployeesPage from './pages/EmployeesPage';
 import UserVerificationPage from './pages/UserVerificationPage';
 import UserSeatAllocationPage from './pages/UserSeatAllocationPage';
 import UsersPage from './pages/UsersPage';
+import UserDetailsPage from './pages/UserDetailsPage';
+import LicenseDetailPage from './pages/LicenseDetailPage';
 
 const App: React.FC = () => {
   return (
@@ -28,6 +30,7 @@ const App: React.FC = () => {
         <Route path="/assets/:id" element={<AssetDetailPage />} />
         <Route path="/software" element={<SoftwarePage />} />
         <Route path="/licenses" element={<LicensePage />} />
+        <Route path="/licenses/:id" element={<LicenseDetailPage />} />
         <Route path="/verification" element={<VerificationPage />} />
         <Route path="/verification-list" element={<AssetVerificationListPage />} />
         <Route path="/quikr-logs" element={<QuikrLogsPage />} />
@@ -35,14 +38,15 @@ const App: React.FC = () => {
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/map" element={<FloorMapPage />} />
         <Route path="/employees" element={<EmployeesPage />} />
-        
+
         {/* New Admin Modules */}
         <Route path="/users" element={<UsersPage />} />
-        
+        <Route path="/users/:id" element={<UserDetailsPage />} />
+
         {/* User Specific Routes */}
         <Route path="/user/verify" element={<UserVerificationPage />} />
         <Route path="/user/seat" element={<UserSeatAllocationPage />} />
-        
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>

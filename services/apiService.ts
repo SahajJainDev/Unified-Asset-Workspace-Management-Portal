@@ -240,6 +240,11 @@ class ApiService {
     });
   }
 
+  // Software Stats
+  async getSoftwareStats(): Promise<any[]> {
+    return this.request<any[]>('/dashboard/software-stats');
+  }
+
   // Software CRUD operations
   async getSoftware(): Promise<Software[]> {
     return this.request<Software[]>('/software');

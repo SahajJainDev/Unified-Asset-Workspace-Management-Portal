@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import AddLicenseModal from '../components/AddLicenseModal';
@@ -6,18 +7,30 @@ import AIChatBot from '../components/AIChatBot';
 import apiService, { License } from '../services/apiService';
 
 const LicensePage: React.FC = () => {
+  const navigate = useNavigate();
   const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
   const [licenses, setLicenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
+
+  // Get software filter from URL
+  const searchParams = new URLSearchParams(window.location.search);
+  const softwareFilter = searchParams.get('software');
 
   const fetchLicenses = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await apiService.getLicenses();
+
+      // Filter by software if param exists
+      const filteredData = softwareFilter
+        ? data.filter((l: any) => l.softwareName === softwareFilter)
+        : data;
+
       // Map API response to table format
-      const mappedLicenses = data.map((license: any) => ({
+      const mappedLicenses = filteredData.map((license: any) => ({
         id: license._id,
         softwareName: license.softwareName,
         version: license.version || 'N/A',
@@ -29,7 +42,8 @@ const LicensePage: React.FC = () => {
         licenseKey: license.licenseKey || 'N/A',
         assignedSystem: license.assignedSystem || 'Unassigned',
         status: license.expiryDate && new Date(license.expiryDate) < new Date() ? 'Expired' : 'Active',
-        statusColor: license.expiryDate && new Date(license.expiryDate) < new Date() ? 'red' : 'green'
+        statusColor: license.expiryDate && new Date(license.expiryDate) < new Date() ? 'red' : 'green',
+        rawData: license // Keep original object for editing
       }));
       setLicenses(mappedLicenses);
     } catch (err) {
@@ -41,7 +55,17 @@ const LicensePage: React.FC = () => {
 
   useEffect(() => {
     fetchLicenses();
-  }, []);
+  }, [softwareFilter]);
+
+  const handleEditClick = (license: any) => {
+    setSelectedLicense(license.rawData);
+    setIsLicenseModalOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setSelectedLicense(null);
+    setIsLicenseModalOpen(true);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
@@ -51,11 +75,15 @@ const LicensePage: React.FC = () => {
         <div className="p-8 space-y-8 max-w-[1200px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-wrap justify-between items-end gap-3 mb-6">
             <div className="flex flex-col gap-2">
-              <p className="text-[#111418] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">License Management</p>
-              <p className="text-[#617589] dark:text-gray-400 text-base font-normal leading-normal">Track license keys, expiry dates, and assignments.</p>
+              <p className="text-[#111418] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
+                {softwareFilter ? `${softwareFilter} Licenses` : 'License Management'}
+              </p>
+              <p className="text-[#617589] dark:text-gray-400 text-base font-normal leading-normal">
+                {softwareFilter ? `Viewing licenses for ${softwareFilter}` : 'Track license keys, expiry dates, and assignments.'}
+              </p>
             </div>
             <button
-              onClick={() => setIsLicenseModalOpen(true)}
+              onClick={handleAddClick}
               className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
             >
               <span className="material-symbols-outlined mr-2">add</span>
@@ -129,13 +157,15 @@ const LicensePage: React.FC = () => {
                           <p className="text-sm">{license.assignedSystem}</p>
                         </td>
                         <td className="px-6 py-5">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            license.statusColor === 'green' ? 'bg-green-100 text-green-700' :
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${license.statusColor === 'green' ? 'bg-green-100 text-green-700' :
                             'bg-red-100 text-red-700'
-                          }`}>{license.status}</span>
+                            }`}>{license.status}</span>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          <button className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all shadow-sm">
+                          <button
+                            onClick={() => navigate(`/licenses/${license.id}`)}
+                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all shadow-sm"
+                          >
                             Manage
                           </button>
                         </td>
@@ -159,23 +189,8 @@ const LicensePage: React.FC = () => {
       <AddLicenseModal
         isOpen={isLicenseModalOpen}
         onClose={() => setIsLicenseModalOpen(false)}
-        onSuccess={(newLicense: License) => {
-          const mappedLicense = {
-            id: newLicense._id,
-            softwareName: newLicense.softwareName,
-            version: newLicense.version || 'N/A',
-            invoiceNumber: newLicense.invoiceNumber || 'N/A',
-            addedBy: newLicense.addedBy || 'N/A',
-            startDate: newLicense.startDate ? new Date(newLicense.startDate).toLocaleDateString() : 'N/A',
-            expiryDate: newLicense.expiryDate ? new Date(newLicense.expiryDate).toLocaleDateString() : 'N/A',
-            seatsLimit: newLicense.seatsLimit || 1,
-            licenseKey: newLicense.licenseKey || 'N/A',
-            assignedSystem: newLicense.assignedSystem || 'Unassigned',
-            status: newLicense.expiryDate && new Date(newLicense.expiryDate) < new Date() ? 'Expired' : 'Active',
-            statusColor: newLicense.expiryDate && new Date(newLicense.expiryDate) < new Date() ? 'red' : 'green'
-          };
-          setLicenses(prev => [...prev, mappedLicense]);
-        }}
+        editLicense={selectedLicense}
+        onSuccess={fetchLicenses}
       />
     </div>
   );

@@ -11,6 +11,11 @@ const SoftwarePage: React.FC = () => {
   const [software, setSoftware] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredSoftware = software.filter(sw =>
+    sw.n.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const fetchSoftware = async () => {
     try {
@@ -35,9 +40,30 @@ const SoftwarePage: React.FC = () => {
     }
   };
 
+  const [stats, setStats] = useState<any[]>([
+    { label: 'Total Licenses', value: '-', icon: 'package_2', trend: '' },
+    { label: 'Utilization Avg', value: '-', icon: 'group_work', trend: '' },
+    { label: 'Renewals Pending', value: '-', icon: 'event_repeat', trend: '' },
+  ]);
+
+  const fetchStats = async () => {
+    try {
+      const data = await apiService.getSoftwareStats();
+      setStats(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchSoftware();
+    fetchStats();
   }, []);
+
+  const handleLicenseAdded = () => {
+    fetchSoftware(); // Refresh list to show new seats/software
+    fetchStats();    // Refresh stats
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
@@ -50,21 +76,29 @@ const SoftwarePage: React.FC = () => {
               <p className="text-[#111418] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Software Management</p>
               <p className="text-[#617589] dark:text-gray-400 text-base font-normal leading-normal">Track seat utilization and renewal lifecycles.</p>
             </div>
-            <button 
-              onClick={() => setIsLicenseModalOpen(true)}
-              className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
-            >
-              <span className="material-symbols-outlined mr-2">add</span>
-              <span>Add License</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                <input
+                  type="text"
+                  placeholder="Search software..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 bg-white dark:bg-[#1a2632] border border-[#dbe0e6] dark:border-gray-800 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none w-64 transition-all"
+                />
+              </div>
+              <button
+                onClick={() => setIsLicenseModalOpen(true)}
+                className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
+              >
+                <span className="material-symbols-outlined mr-2">add</span>
+                <span>Add License</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { label: 'Total Licenses', value: '1,245', icon: 'package_2', trend: '+12' },
-              { label: 'Utilization Avg', value: '82%', icon: 'group_work', trend: '-2.4%' },
-              { label: 'Renewals Pending', value: '18', icon: 'event_repeat', trend: 'Next: 3 days' },
-            ].map((stat, i) => (
+            {stats.map((stat, i) => (
               <div key={i} className="bg-white dark:bg-[#1a2632] p-6 rounded-xl border border-[#dbe0e6] dark:border-gray-800 transition-all hover:shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="size-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
@@ -101,7 +135,7 @@ const SoftwarePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#dbe0e6] dark:divide-gray-800">
-                    {software.length > 0 ? software.map((sw, i) => (
+                    {filteredSoftware.length > 0 ? filteredSoftware.map((sw, i) => (
                       <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
@@ -122,24 +156,25 @@ const SoftwarePage: React.FC = () => {
                             </div>
                             <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-1000 ${
-                                  parseInt(sw.p) > 90 ? 'bg-red-500' :
+                                className={`h-full rounded-full transition-all duration-1000 ${parseInt(sw.p) > 90 ? 'bg-red-500' :
                                   parseInt(sw.p) > 80 ? 'bg-amber-500' : 'bg-primary'
-                                }`}
+                                  }`}
                                 style={{ width: sw.p }}
                               ></div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-5">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            sw.c === 'green' ? 'bg-green-100 text-green-700' :
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${sw.c === 'green' ? 'bg-green-100 text-green-700' :
                             sw.c === 'amber' ? 'bg-amber-100 text-amber-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>{sw.s}</span>
+                              'bg-red-100 text-red-700'
+                            }`}>{sw.s}</span>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          <button className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all shadow-sm">
+                          <button
+                            onClick={() => window.location.href = `/licenses?software=${encodeURIComponent(sw.n)}`}
+                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all shadow-sm"
+                          >
                             Manage
                           </button>
                         </td>
@@ -160,9 +195,10 @@ const SoftwarePage: React.FC = () => {
         <AIChatBot />
       </main>
 
-      <AddLicenseModal 
-        isOpen={isLicenseModalOpen} 
-        onClose={() => setIsLicenseModalOpen(false)} 
+      <AddLicenseModal
+        isOpen={isLicenseModalOpen}
+        onClose={() => setIsLicenseModalOpen(false)}
+        onSuccess={handleLicenseAdded}
       />
     </div>
   );
