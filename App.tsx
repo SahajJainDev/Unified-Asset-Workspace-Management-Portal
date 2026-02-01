@@ -19,6 +19,7 @@ import UserSeatAllocationPage from './pages/UserSeatAllocationPage';
 import UsersPage from './pages/UsersPage';
 import UserDetailsPage from './pages/UserDetailsPage';
 import LicenseDetailPage from './pages/LicenseDetailPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 
 const App: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/search" element={<SearchResultsPage />} />
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/assets/:id" element={<AssetDetailPage />} />
         <Route path="/software" element={<SoftwarePage />} />

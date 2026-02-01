@@ -55,6 +55,28 @@ const SoftwarePage: React.FC = () => {
     }
   };
 
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      await apiService.uploadSoftwareBatch(file);
+      alert('Software imported successfully!');
+      fetchSoftware();
+      fetchStats();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'Failed to import software');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   useEffect(() => {
     fetchSoftware();
     fetchStats();
@@ -87,6 +109,21 @@ const SoftwarePage: React.FC = () => {
                   className="pl-10 pr-4 py-2 bg-white dark:bg-[#1a2632] border border-[#dbe0e6] dark:border-gray-800 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none w-64 transition-all"
                 />
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".xlsx, .xls"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="flex items-center justify-center rounded-lg h-12 px-6 bg-white dark:bg-[#1a2632] border border-[#dbe0e6] dark:border-gray-800 text-[#111418] dark:text-white text-sm font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined mr-2">upload</span>
+                <span>{importing ? 'Importing...' : 'Bulk Import'}</span>
+              </button>
               <button
                 onClick={() => setIsLicenseModalOpen(true)}
                 className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
@@ -131,12 +168,15 @@ const SoftwarePage: React.FC = () => {
                       <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider">Software</th>
                       <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider">Utilization</th>
                       <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#dbe0e6] dark:divide-gray-800">
                     {filteredSoftware.length > 0 ? filteredSoftware.map((sw, i) => (
-                      <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <tr
+                        key={i}
+                        onClick={() => window.location.href = `/licenses?software=${encodeURIComponent(sw.n)}`}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                      >
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <div className="size-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
@@ -170,18 +210,10 @@ const SoftwarePage: React.FC = () => {
                               'bg-red-100 text-red-700'
                             }`}>{sw.s}</span>
                         </td>
-                        <td className="px-6 py-5 text-right">
-                          <button
-                            onClick={() => window.location.href = `/licenses?software=${encodeURIComponent(sw.n)}`}
-                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all shadow-sm"
-                          >
-                            Manage
-                          </button>
-                        </td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={4} className="px-6 py-10 text-center text-[#617589] text-sm italic">
+                        <td colSpan={3} className="px-6 py-10 text-center text-[#617589] text-sm italic">
                           No software found
                         </td>
                       </tr>

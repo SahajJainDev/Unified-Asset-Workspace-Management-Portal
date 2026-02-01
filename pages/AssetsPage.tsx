@@ -47,7 +47,7 @@ const AssetsPage: React.FC = () => {
   }, []);
 
   const filteredAssets = useMemo(() => {
-    return assets.filter(asset => 
+    return assets.filter(asset =>
       String(asset.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
       String(asset.n).toLowerCase().includes(searchQuery.toLowerCase()) ||
       String(asset.u).toLowerCase().includes(searchQuery.toLowerCase())
@@ -55,46 +55,46 @@ const AssetsPage: React.FC = () => {
   }, [searchQuery, assets]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.checked) {
-          const allIds = new Set(filteredAssets.map(a => a.id));
-          setSelectedIds(allIds);
-      } else {
-          setSelectedIds(new Set());
-      }
+    if (e.target.checked) {
+      const allIds = new Set(filteredAssets.map(a => a.id));
+      setSelectedIds(allIds);
+    } else {
+      setSelectedIds(new Set());
+    }
   };
 
   const handleSelectRow = (id: string) => {
-      const newSelected = new Set(selectedIds);
-      if (newSelected.has(id)) {
-          newSelected.delete(id);
-      } else {
-          newSelected.add(id);
-      }
-      setSelectedIds(newSelected);
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
   };
 
   const handleDeleteAll = async () => {
-      if (window.confirm('Are you sure you want to DELETE ALL assets? This action cannot be undone.')) {
-          try {
-              await apiService.deleteAllAssets();
-              fetchAssets();
-              alert('All assets deleted successfully.');
-          } catch (err) {
-              alert('Failed to delete assets.');
-          }
+    if (window.confirm('Are you sure you want to DELETE ALL assets? This action cannot be undone.')) {
+      try {
+        await apiService.deleteAllAssets();
+        fetchAssets();
+        alert('All assets deleted successfully.');
+      } catch (err) {
+        alert('Failed to delete assets.');
       }
+    }
   };
 
   const handleDeleteSelected = async () => {
-      if (selectedIds.size === 0) return;
-      if (window.confirm(`Are you sure you want to delete ${selectedIds.size} selected assets?`)) {
-          try {
-              await apiService.deleteBatchAssets(Array.from(selectedIds));
-              fetchAssets();
-          } catch (err) {
-              alert('Failed to delete selected assets.');
-          }
+    if (selectedIds.size === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.size} selected assets?`)) {
+      try {
+        await apiService.deleteBatchAssets(Array.from(selectedIds));
+        fetchAssets();
+      } catch (err) {
+        alert('Failed to delete selected assets.');
       }
+    }
   };
 
   const handleExportCSV = () => {
@@ -136,15 +136,15 @@ const AssetsPage: React.FC = () => {
             </div>
             <div className="flex gap-3">
               {selectedIds.size > 0 && (
-                  <button 
-                    onClick={handleDeleteSelected}
-                    className="flex items-center justify-center rounded-lg h-10 px-4 bg-red-50 text-red-600 border border-red-200 text-sm font-bold gap-2 hover:bg-red-100 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">delete</span>
-                    <span>Delete ({selectedIds.size})</span>
-                  </button>
+                <button
+                  onClick={handleDeleteSelected}
+                  className="flex items-center justify-center rounded-lg h-10 px-4 bg-red-50 text-red-600 border border-red-200 text-sm font-bold gap-2 hover:bg-red-100 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                  <span>Delete ({selectedIds.size})</span>
+                </button>
               )}
-              <button 
+              <button
                 onClick={handleDeleteAll}
                 className="flex items-center justify-center rounded-lg h-10 px-4 bg-red-600 text-white text-sm font-bold gap-2 hover:bg-red-700 transition-all shadow-sm"
               >
@@ -155,7 +155,7 @@ const AssetsPage: React.FC = () => {
                 <span className="material-symbols-outlined text-[20px]">upload</span>
                 <span>Bulk Upload</span>
               </Link>
-              <button 
+              <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2 shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
               >
@@ -171,8 +171,8 @@ const AssetsPage: React.FC = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#617589]">
                   <span className="material-symbols-outlined">search</span>
                 </div>
-                <input 
-                  className="w-full pl-10 pr-4 py-2 bg-[#f0f2f4] dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50 transition-all" 
+                <input
+                  className="w-full pl-10 pr-4 py-2 bg-[#f0f2f4] dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50 transition-all"
                   placeholder="Search by ID, name, or user..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -182,9 +182,9 @@ const AssetsPage: React.FC = () => {
                 <button className="p-2 text-[#617589] hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" title="Filter list">
                   <span className="material-symbols-outlined">filter_list</span>
                 </button>
-                <button 
+                <button
                   onClick={handleExportCSV}
-                  className="p-2 text-[#617589] hover:bg-primary/10 hover:text-primary dark:hover:bg-gray-800 rounded-lg transition-colors" 
+                  className="p-2 text-[#617589] hover:bg-primary/10 hover:text-primary dark:hover:bg-gray-800 rounded-lg transition-colors"
                   title="Export to CSV"
                   disabled={filteredAssets.length === 0}
                 >
@@ -192,7 +192,7 @@ const AssetsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="overflow-x-auto">
               {loading ? (
                 <div className="px-6 py-10 text-center text-[#617589] text-sm">
@@ -207,11 +207,11 @@ const AssetsPage: React.FC = () => {
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-800/50 text-[#617589] dark:text-gray-400 uppercase text-[11px] font-bold tracking-wider">
                       <th className="px-6 py-4 w-10">
-                          <input 
-                            type="checkbox" 
-                            className="rounded text-primary focus:ring-primary"
-                            checked={filteredAssets.length > 0 && selectedIds.size === filteredAssets.length}
-                            onChange={handleSelectAll}
+                        <input
+                          type="checkbox"
+                          className="rounded text-primary focus:ring-primary"
+                          checked={filteredAssets.length > 0 && selectedIds.size === filteredAssets.length}
+                          onChange={handleSelectAll}
                         />
                       </th>
                       <th className="px-6 py-4">Asset ID</th>
@@ -229,12 +229,12 @@ const AssetsPage: React.FC = () => {
                         onClick={() => navigate(`/assets/${asset.id}`)}
                       >
                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                            <input 
-                                type="checkbox" 
-                                className="rounded text-primary focus:ring-primary"
-                                checked={selectedIds.has(asset.id)}
-                                onChange={() => handleSelectRow(asset.id)}
-                            />
+                          <input
+                            type="checkbox"
+                            className="rounded text-primary focus:ring-primary"
+                            checked={selectedIds.has(asset.id)}
+                            onChange={() => handleSelectRow(asset.id)}
+                          />
                         </td>
                         <td className="px-6 py-4 font-mono text-xs font-semibold text-primary">{asset.id}</td>
                         <td className="px-6 py-4">
@@ -245,11 +245,10 @@ const AssetsPage: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm">{asset.u}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            asset.sc === 'green' ? 'bg-green-100 text-green-700' :
-                            asset.sc === 'amber' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>{asset.s}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${asset.sc === 'green' ? 'bg-green-100 text-green-700' :
+                              asset.sc === 'amber' ? 'bg-amber-100 text-amber-700' :
+                                'bg-blue-100 text-blue-700'
+                            }`}>{asset.s}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button className="text-[#617589] hover:text-primary p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
@@ -268,7 +267,7 @@ const AssetsPage: React.FC = () => {
                 </table>
               )}
             </div>
-            
+
             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-[#dbe0e6] dark:border-gray-800 flex items-center justify-between text-xs font-medium text-[#617589]">
               <p>Showing {filteredAssets.length} of {assets.length} assets</p>
               <div className="flex gap-2">

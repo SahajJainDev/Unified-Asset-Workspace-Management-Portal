@@ -100,6 +100,22 @@ interface Report {
   updatedAt?: Date;
 }
 
+interface VerificationRecord {
+  id: string; // Asset Tag
+  n: string;  // Asset Name
+  vb: string; // Verified By
+  d: string;  // Date
+  s: string;  // Status
+  sc: string; // Status Color
+}
+
+interface VerificationPost {
+  assetId: string; // MongoDB _id
+  status: 'Verified' | 'Pending' | 'Flagged';
+  verifiedBy: string;
+  notes?: string;
+}
+
 interface Floor {
   _id: string;
   name: string;
@@ -356,6 +372,41 @@ class ApiService {
     return this.request<void>(`/floors/workstations/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // Verification operations
+  async submitVerification(verification: VerificationPost): Promise<any> {
+    return this.request<any>('/verifications', {
+      method: 'POST',
+      body: JSON.stringify(verification),
+    });
+  }
+
+  async getVerifications(): Promise<VerificationRecord[]> {
+    return this.request<VerificationRecord[]>('/verifications');
+  }
+
+  // Global Search
+  async searchGlobal(query: string): Promise<{ assets: any[], software: any[], licenses: any[] }> {
+    return this.request<{ assets: any[], software: any[], licenses: any[] }>(`/dashboard/search?q=${encodeURIComponent(query)}`);
+  }
+
+  // Software Bulk Upload
+  async uploadSoftwareBatch(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${API_BASE_URL}/software/bulk-upload`;
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.message || 'Bulk upload failed');
+    }
+    return responseData;
   }
 }
 

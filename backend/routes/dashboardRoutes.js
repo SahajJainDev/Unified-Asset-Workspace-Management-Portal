@@ -160,4 +160,45 @@ router.get("/software-stats", async (req, res) => {
   }
 });
 
+// SEARCH GLOBAL
+router.get("/search", async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.json({ assets: [], software: [], licenses: [] });
+
+  try {
+    const regex = new RegExp(q, "i");
+
+    const [assets, software, licenses] = await Promise.all([
+      Asset.find({
+        $or: [
+          { assetName: regex },
+          { assetTag: regex },
+          { model: regex },
+          { serialNumber: regex },
+          { 'employee.name': regex }
+        ]
+      }).limit(5),
+      Software.find({
+        $or: [
+          { name: regex },
+          { version: regex }
+        ]
+      }).limit(5),
+      require("../models/License").find({
+        $or: [
+          { softwareName: regex },
+          { licenseKey: regex },
+          { assignedSystem: regex }
+        ]
+      }).limit(5)
+    ]);
+
+    res.json({ assets, software, licenses });
+  } catch (error) {
+    console.error("Global search error:", error);
+    res.status(500).json({ message: "Failed to perform global search" });
+  }
+});
+
 module.exports = router;
+

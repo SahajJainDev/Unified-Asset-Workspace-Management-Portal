@@ -53,6 +53,27 @@ const LicensePage: React.FC = () => {
     }
   };
 
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      await apiService.uploadSoftwareBatch(file);
+      alert('Licenses imported successfully!');
+      fetchLicenses();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'Failed to import licenses');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   useEffect(() => {
     fetchLicenses();
   }, [softwareFilter]);
@@ -82,13 +103,30 @@ const LicensePage: React.FC = () => {
                 {softwareFilter ? `Viewing licenses for ${softwareFilter}` : 'Track license keys, expiry dates, and assignments.'}
               </p>
             </div>
-            <button
-              onClick={handleAddClick}
-              className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
-            >
-              <span className="material-symbols-outlined mr-2">add</span>
-              <span>Add License</span>
-            </button>
+            <div className="flex gap-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".xlsx, .xls"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="flex items-center justify-center rounded-lg h-12 px-6 bg-white dark:bg-[#1a2632] border border-[#dbe0e6] dark:border-gray-800 text-[#111418] dark:text-white text-sm font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined mr-2">upload</span>
+                <span>{importing ? 'Importing...' : 'Bulk Import'}</span>
+              </button>
+              <button
+                onClick={handleAddClick}
+                className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all"
+              >
+                <span className="material-symbols-outlined mr-2">add</span>
+                <span>Add License</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -131,12 +169,19 @@ const LicensePage: React.FC = () => {
                       <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider">Expiry Date</th>
                       <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider">Assigned To</th>
                       <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-xs font-bold text-[#617589] uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#dbe0e6] dark:divide-gray-800">
                     {licenses.length > 0 ? licenses.map((license, i) => (
-                      <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <tr
+                        key={i}
+                        onClick={() => {
+                          if (license.id) {
+                            navigate(`/licenses/${license.id}`);
+                          }
+                        }}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                      >
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <div className="size-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
@@ -161,18 +206,10 @@ const LicensePage: React.FC = () => {
                             'bg-red-100 text-red-700'
                             }`}>{license.status}</span>
                         </td>
-                        <td className="px-6 py-5 text-right">
-                          <button
-                            onClick={() => navigate(`/licenses/${license.id}`)}
-                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all shadow-sm"
-                          >
-                            Manage
-                          </button>
-                        </td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={6} className="px-6 py-10 text-center text-[#617589] text-sm italic">
+                        <td colSpan={5} className="px-6 py-10 text-center text-[#617589] text-sm italic">
                           No licenses found
                         </td>
                       </tr>
