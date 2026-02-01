@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import AddAssetModal from '../components/AddAssetModal';
 import AIChatBot from '../components/AIChatBot';
+import AssetInventoryForecast from '../components/AssetInventoryForecast';
 import apiService from '../services/apiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Label } from 'recharts';
 
@@ -156,6 +157,11 @@ const DashboardPage: React.FC = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
+              </div>
+
+              {/* Inventory Forecast Section */}
+              <div className="mb-6">
+                <AssetInventoryForecast assetType="Laptop" />
               </div>
 
               {/* Bottom Row Grid */}

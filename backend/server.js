@@ -14,6 +14,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/assets', require('./routes/assetRoutes'));
+
+app.use('/api/forecast', require('./routes/forecastRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 // app.use('/api/floors', require('./routes/floorRoutes')); // Removed
 app.use('/api/desks', require('./routes/deskRoutes')); // Added

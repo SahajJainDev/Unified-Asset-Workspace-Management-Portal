@@ -408,6 +408,10 @@ class ApiService {
     }
     return responseData;
   }
+  // Forecasting
+  async getForecast(assetType: string): Promise<any> {
+    return this.request<any>(`/forecast/${assetType}`);
+  }
 }
 
 const apiService = new ApiService();
