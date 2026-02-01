@@ -5,6 +5,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 const Header: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -34,6 +35,13 @@ const Header: React.FC = () => {
     navigate('/login');
   };
 
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+    }
+  };
+
   const employeeNotifications = [
     {
       id: 1,
@@ -58,25 +66,28 @@ const Header: React.FC = () => {
       <div className="flex-1 max-w-xl">
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">search</span>
-          <input 
-            className="w-full pl-10 pr-4 py-2 bg-background-light dark:bg-background-dark border-none rounded-lg focus:ring-2 focus:ring-primary text-sm transition-all" 
-            placeholder="Search assets, users, or licenses..." 
+          <input
+            className="w-full pl-10 pr-4 py-2 bg-background-light dark:bg-background-dark border-none rounded-lg focus:ring-2 focus:ring-primary text-sm transition-all"
+            placeholder="Search assets, users, or licenses..."
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearch}
           />
         </div>
       </div>
-      
+
       <div className="flex items-center gap-4 ml-8">
-        <button 
-          onClick={toggleDark} 
+        <button
+          onClick={toggleDark}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
           title="Toggle Dark Mode"
         >
           <span className="material-symbols-outlined">{isDark ? 'light_mode' : 'dark_mode'}</span>
         </button>
-        
+
         <div className="relative" ref={notificationRef}>
-          <button 
+          <button
             onClick={() => setShowNotifications(!showNotifications)}
             className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 relative group transition-colors ${showNotifications ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
           >
@@ -115,31 +126,31 @@ const Header: React.FC = () => {
                 )}
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/30 text-center">
-                 <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Mark all as read</button>
+                <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Mark all as read</button>
               </div>
             </div>
           )}
         </div>
-        
+
         {!isUserPath && (
-          <Link 
-            to="/verification-list" 
+          <Link
+            to="/verification-list"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
             title="Compliance Check"
           >
             <span className="material-symbols-outlined">fact_check</span>
           </Link>
         )}
-        
+
         <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-2"></div>
-        
+
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <span className="material-symbols-outlined text-gray-600 dark:text-gray-300 text-lg">help</span>
             <span className="text-sm font-medium">Help</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={handleSignOut}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-all font-medium"
           >

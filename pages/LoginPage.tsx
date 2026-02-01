@@ -13,7 +13,7 @@ const LoginPage: React.FC = () => {
         </div>
         <span className="text-slate-900 dark:text-white font-bold text-lg">Enterprise Asset Portal</span>
       </header>
-      
+
       <main className="flex-grow flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
           <div className="p-8 text-center">
@@ -24,9 +24,9 @@ const LoginPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">
               Welcome to the Enterprise IT & Facilities Asset Management Portal. Please choose your login method.
             </p>
-            
+
             <div className="space-y-4">
-              <button 
+              <button
                 onClick={() => navigate('/')}
                 className="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3.5 px-6 rounded-lg transition duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
               >
@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
                 <span>Sign in with Corporate SSO (Admin)</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => navigate('/user/verify')}
                 className="w-full bg-white dark:bg-slate-800 border-2 border-primary/20 hover:border-primary text-primary dark:text-blue-400 font-semibold py-3.5 px-6 rounded-lg transition duration-200 flex items-center justify-center space-x-2 shadow-sm hover:shadow-md"
               >
@@ -42,7 +42,7 @@ const LoginPage: React.FC = () => {
                 <span>Sign in with User SSO (Employee)</span>
               </button>
             </div>
-            
+
             <div className="mt-8 flex items-center justify-center space-x-4 text-sm font-medium">
               <a className="text-slate-600 dark:text-slate-400 hover:text-primary transition" href="#">Trouble signing in?</a>
               <span className="w-px h-4 bg-slate-200 dark:bg-slate-700"></span>
@@ -51,7 +51,7 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
       </main>
-      
+
       <footer className="p-6 text-center text-slate-400 text-xs">
         &copy; 2024 AssetTrack Pro. Secure Enterprise Authentication Required.
       </footer>
