@@ -101,18 +101,23 @@ interface Report {
 }
 
 interface VerificationRecord {
-  id: string; // Asset Tag
-  n: string;  // Asset Name
-  vb: string; // Verified By
-  d: string;  // Date
-  s: string;  // Status
-  sc: string; // Status Color
+  id: string; // MongoDB _id
+  assetTag: string; // Real Asset Tag from DB
+  enteredAssetId: string; // What the user typed
+  assetName: string;
+  employeeName: string;
+  employeeId: string;
+  date: string;
+  time: string;
+  status: string;
+  statusColor: string;
 }
 
 interface VerificationPost {
   assetId: string; // MongoDB _id
+  enteredAssetId: string;
+  employeeId: string;
   status: 'Verified' | 'Pending' | 'Flagged';
-  verifiedBy: string;
   notes?: string;
 }
 
@@ -411,6 +416,23 @@ class ApiService {
   // Forecasting
   async getForecast(assetType: string): Promise<any> {
     return this.request<any>(`/forecast/${assetType}`);
+  }
+
+  // Employee operations
+  async getEmployees(): Promise<any[]> {
+    return this.request<any[]>('/employees');
+  }
+
+  async getEmployee(id: string): Promise<any> {
+    return this.request<any>(`/employees/${id}`);
+  }
+
+  async getAssetsByEmployee(employeeId: string): Promise<Asset[]> {
+    return this.request<Asset[]>(`/assets?assignedTo=${employeeId}`);
+  }
+
+  async getDeskByEmployee(employeeId: string): Promise<any> {
+    return this.request<any>(`/desks/employee/${employeeId}`);
   }
 }
 
