@@ -8,6 +8,10 @@ import { Employee, UserRole } from '../types';
 const UsersPage: React.FC = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(20);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,13 +23,20 @@ const UsersPage: React.FC = () => {
   );
 
   // Re-use fetching logic similar to EmployeesPage, but focused on 'User' aspects
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (p = page, l = limit) => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5000/api/employees');
+      const q = searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : '';
+      const res = await fetch(`http://localhost:5000/api/employees?page=${p}&limit=${l}${q}`);
       if (res.ok) {
-        const data = await res.json();
-        setEmployees(data);
+        const json = await res.json();
+        setEmployees(json.data || []);
+        setTotalCount(json.total || 0);
+        setTotalPages(json.pages || 1);
+        setPage(json.page || p);
+        setLimit(json.limit || l);
+      } else {
+        console.error('Failed to fetch employees', await res.text());
       }
     } catch (error) {
       console.error("Failed to fetch employees", error);
@@ -37,6 +48,12 @@ const UsersPage: React.FC = () => {
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  // refetch when page, limit or searchTerm changes
+  useEffect(() => {
+    const t = setTimeout(() => fetchEmployees(page, limit), 200);
+    return () => clearTimeout(t);
+  }, [page, limit, searchTerm]);
 
   const toggleAccess = async (id: string, currentStatus: boolean) => {
     try {
@@ -145,6 +162,27 @@ const UsersPage: React.FC = () => {
                 <span className="material-symbols-outlined text-[20px]">person_add</span>
                 <span>Add User</span>
               </button>
+            </div>
+          </div>
+          {/* Pagination controls */}
+          <div className="max-w-[1200px] w-full mx-auto px-6 pb-8 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <span className="font-bold">Rows:</span>
+              <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-white border rounded px-2 py-1">
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="ml-4">Total: {totalCount}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button disabled={page <= 1} onClick={() => setPage(1)} className="px-3 py-1 rounded border">First</button>
+              <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 rounded border">Prev</button>
+              <div className="px-3 py-1 border rounded">{page} / {totalPages}</div>
+              <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="px-3 py-1 rounded border">Next</button>
+              <button disabled={page >= totalPages} onClick={() => setPage(totalPages)} className="px-3 py-1 rounded border">Last</button>
             </div>
           </div>
 

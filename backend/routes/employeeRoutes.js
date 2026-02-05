@@ -43,11 +43,50 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
       const rowNumber = i + 2; // Data starts at row 2 visually
 
       try {
-        // Mapping based on user image: "S NO", "EMP ID", "Full Name"
-        const empId = rowData['EMP ID'];
-        const fullName = rowData['Full Name'];
+        // Normalize header keys (trim + lowercase) so we accept common variants
+        const normalizedRow = {};
+        for (const key in rowData) {
+          if (!Object.prototype.hasOwnProperty.call(rowData, key)) continue;
+          const k = String(key).trim().toLowerCase();
+          normalizedRow[k] = rowData[key];
+        }
 
-        if (!empId || !fullName) {
+        const findFirst = (obj, keys) => {
+          for (const k of keys) {
+            if (obj[k] !== undefined && String(obj[k]).trim() !== '') return obj[k];
+          }
+          return undefined;
+        };
+
+        const empIdKeys = ['emp id', 'empid', 'employee id', 'employeeid', 'employee number', 'employee_number', 'emp_number', 'id'];
+        const fullNameKeys = ['full name', 'fullname', 'name', 'employee name', 'emp name', 'user name', 'username', 'user'];
+
+        // Log the normalizedRow for the first few rows to help debug header mapping
+        if (i < 5) {
+          try {
+            console.log(`Row preview ${rowNumber}:`, normalizedRow);
+          } catch (e) {
+            // ignore logging errors
+          }
+        }
+
+        const empId = findFirst(normalizedRow, empIdKeys);
+        const fullName = findFirst(normalizedRow, fullNameKeys);
+
+        const isEmptyValue = (v) => {
+          if (v === undefined || v === null) return true;
+          const s = String(v).trim().toLowerCase();
+          return s === '' || s === '0' || s === 'empty' || s === 'na' || s === 'n/a' || s === '-';
+        };
+
+        // If both empId and fullName indicate an empty seat, skip silently
+        if (isEmptyValue(empId) && isEmptyValue(fullName)) {
+          results.skippedCount = (results.skippedCount || 0) + 1;
+          continue;
+        }
+
+        // If one is missing but the other is present, treat as an error
+        if (isEmptyValue(empId) || isEmptyValue(fullName)) {
           throw new Error(`Row ${rowNumber}: Missing EMP ID or Full Name`);
         }
 
@@ -80,7 +119,8 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
       summary: {
         total: rows.length,
         upserted: results.upsertedCount,
-        failed: results.errors.length
+        failed: results.errors.length,
+        skipped: results.skippedCount || 0
       },
       errors: results.errors
     });
@@ -92,11 +132,40 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
   }
 });
 
-// GET All Employees
+// GET Employees (supports pagination and search)
+// Query params: page (1-based), limit, q (search term)
 router.get("/", async (req, res) => {
   try {
-    const employees = await Employee.find().sort({ createdAt: -1 });
-    res.json(employees);
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.max(1, parseInt(req.query.limit || '20', 10));
+    const q = req.query.q ? String(req.query.q).trim() : '';
+
+    const filter = {};
+    if (q) {
+      // search across empId, fullName and email
+      filter.$or = [
+        { empId: { $regex: q, $options: 'i' } },
+        { fullName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } }
+      ];
+    }
+
+    const total = await Employee.countDocuments(filter);
+    const pages = Math.max(1, Math.ceil(total / limit));
+    const skip = (page - 1) * limit;
+
+    const employees = await Employee.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      data: employees,
+      total,
+      page,
+      pages,
+      limit
+    });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch employees' });
   }
