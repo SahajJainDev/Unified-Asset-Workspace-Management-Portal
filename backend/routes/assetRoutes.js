@@ -79,6 +79,7 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
         const mappedAsset = {
           assetTag: rowData['Asset Id'],
           assetName: rowData['Asset Name'],
+          assetType: rowData['Asset Type'] || rowData['Type'] || 'Laptop',
           description: rowData['Asset Description / Location'],
           warrantyExpiry: rowData['Warranty Expires On'], // Date parsing might be needed
           condition: rowData['Asset Condition'],

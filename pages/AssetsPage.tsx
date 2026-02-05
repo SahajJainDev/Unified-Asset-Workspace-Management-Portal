@@ -28,7 +28,7 @@ const AssetsPage: React.FC = () => {
         _realId: asset._id, // Keep real ID for reference if needed
         n: asset.assetName,
         d: `${asset.model || ''} • ${asset.specs?.processor || ''} ${asset.specs?.memory || ''}`.trim(),
-        u: asset.employee?.name || asset.assignedTo || 'Unassigned',
+        u: (asset.employee && asset.employee.name) || asset.assignedTo || 'Unassigned',
         s: asset.status,
         sc: asset.status === 'IN USE' ? 'green' : asset.status === 'REPAIR' ? 'amber' : 'blue'
       }));
