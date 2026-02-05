@@ -32,6 +32,7 @@ const Header: React.FC = () => {
   };
 
   const handleSignOut = () => {
+    localStorage.removeItem('currentUser');
     navigate('/login');
   };
 
@@ -46,7 +47,7 @@ const Header: React.FC = () => {
     {
       id: 1,
       title: 'Seat Allocation Updated',
-      message: 'Your primary workstation has been updated to A-21 in Floor 4.',
+      message: 'Your primary workstation allocation has been confirmed by Facilities.',
       time: 'Just now',
       icon: 'event_seat',
       color: 'bg-blue-50 text-blue-600'
@@ -54,7 +55,7 @@ const Header: React.FC = () => {
     {
       id: 2,
       title: 'Verification Request',
-      message: 'Admin Alex Rivera requested your quarterly asset attestation.',
+      message: 'System Administrator requested your quarterly asset attestation.',
       time: '2 hours ago',
       icon: 'fact_check',
       color: 'bg-amber-50 text-amber-600'

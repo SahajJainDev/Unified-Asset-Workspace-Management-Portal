@@ -67,10 +67,16 @@ const AssetDetailPage: React.FC = () => {
     // Handle nested employee fields
     if (name.startsWith('employee.')) {
         const field = name.split('.')[1];
-        setFormData((prev: any) => ({
-            ...prev,
-            employee: { ...prev.employee, [field]: value }
-        }));
+        setFormData((prev: any) => {
+            const updatedEmployee = { ...prev.employee, [field]: value };
+            // Auto-update status to Assigned if employee number is provided
+            const shouldAutoAssign = field === 'number' && value && value.trim() !== '';
+            return {
+                ...prev,
+                employee: updatedEmployee,
+                status: shouldAutoAssign ? 'Assigned' : prev.status
+            };
+        });
     } else if (name.startsWith('specs.')) {
         const field = name.split('.')[1];
         setFormData((prev: any) => ({
@@ -252,7 +258,7 @@ const AssetDetailPage: React.FC = () => {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-bold">Installed Software</h3>
-                    {softwareData && (
+                    {softwareData?.verification && (
                       <p className="text-xs text-[#617589] mt-1">
                         Last scanned: {new Date(softwareData.verification.scannedAt).toLocaleString()} • 
                         Total: {installedSoftwareList.length} applications • 
