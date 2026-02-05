@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 interface UserSidebarProps {
-  activeTab?: 'verify' | 'seat';
+  activeTab?: 'verify' | 'seat' | 'software-verify';
 }
 
 const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
@@ -13,8 +13,13 @@ const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
   const navItems = [
     { id: 'verify', label: 'Verify Asset', icon: 'fact_check', path: '/user/verify' },
     { id: 'seat', label: 'Seat Allocation', icon: 'event_seat', path: '/user/seat' },
+    { id: 'software-verify', label: 'Software Verification', icon: 'inventory_2', path: '/user/software-verify' },
   ];
 
+  const currentTab = activeTab || (
+    location.pathname.includes('software-verify') ? 'software-verify' :
+    location.pathname.includes('seat') ? 'seat' : 'verify'
+  );
   const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
   const handleLogout = () => {
@@ -22,7 +27,7 @@ const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
     navigate('/login');
   };
 
-  const currentTab = activeTab || (location.pathname.includes('seat') ? 'seat' : 'verify');
+  // const currentTab = activeTab || (location.pathname.includes('seat') ? 'seat' : 'verify');
 
   return (
     <aside className="w-64 shrink-0 flex flex-col h-screen bg-white dark:bg-[#1a2632] border-r border-[#dbe0e6] dark:border-gray-800 transition-colors z-20">

@@ -24,6 +24,7 @@ app.use('/api/licenses', require('./routes/licenseRoutes'));
 app.use('/api/employees', require('./routes/employeeRoutes')); // Added
 app.use('/api/software', require('./routes/softwareRoutes'));
 app.use('/api/verifications', require('./routes/verificationRoutes'));
+app.use('/api/software-verification', require('./routes/softwareVerificationRoutes'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

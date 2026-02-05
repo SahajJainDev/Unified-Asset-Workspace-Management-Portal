@@ -11,9 +11,14 @@ const AssetDetailPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
   const [isEditing, setIsEditing] = React.useState(false);
   const [formData, setFormData] = React.useState<any>({});
+  const [softwareData, setSoftwareData] = React.useState<any>(null);
+  const [softwareLoading, setSoftwareLoading] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 10;
 
   React.useEffect(() => {
     fetchAsset();
+    fetchInstalledSoftware();
   }, [id]);
 
   const fetchAsset = async () => {
@@ -39,15 +44,39 @@ const AssetDetailPage: React.FC = () => {
     }
   };
 
+  const fetchInstalledSoftware = async () => {
+    try {
+      if (!id) return;
+      setSoftwareLoading(true);
+      const res = await fetch(`http://localhost:5000/api/software-verification/asset/${id}/latest`);
+      if (res.ok) {
+        const data = await res.json();
+        setSoftwareData(data);
+      } else {
+        console.log('No software verification data found for this asset');
+      }
+    } catch (err) {
+      console.error('Error fetching software data:', err);
+    } finally {
+      setSoftwareLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     // Handle nested employee fields
     if (name.startsWith('employee.')) {
         const field = name.split('.')[1];
-        setFormData((prev: any) => ({
-            ...prev,
-            employee: { ...prev.employee, [field]: value }
-        }));
+        setFormData((prev: any) => {
+            const updatedEmployee = { ...prev.employee, [field]: value };
+            // Auto-update status to Assigned if employee number is provided
+            const shouldAutoAssign = field === 'number' && value && value.trim() !== '';
+            return {
+                ...prev,
+                employee: updatedEmployee,
+                status: shouldAutoAssign ? 'Assigned' : prev.status
+            };
+        });
     } else if (name.startsWith('specs.')) {
         const field = name.split('.')[1];
         setFormData((prev: any) => ({
@@ -80,12 +109,23 @@ const AssetDetailPage: React.FC = () => {
     }
   };
 
-  const installedSoftware = [
-    { name: 'Adobe Creative Cloud', version: 'v2024.1', date: 'Jan 15, 2024', status: 'Compliant' },
-    { name: 'Slack Desktop', version: 'v4.35.0', date: 'Feb 02, 2024', status: 'Compliant' },
-    { name: 'VS Code', version: 'v1.86.1', date: 'Jan 20, 2024', status: 'Update Avail.' },
-    { name: 'SentinelOne Agent', version: 'v23.2', date: 'Jan 01, 2024', status: 'Secured' },
-  ];
+  // Calculate pagination for software list
+  const installedSoftwareList = softwareData?.installedSoftware || [];
+  const totalPages = Math.ceil(installedSoftwareList.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSoftware = installedSoftwareList.slice(startIndex, endIndex);
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  };
+
+  const handleFirstPage = () => setCurrentPage(1);
+  const handleLastPage = () => setCurrentPage(totalPages);
 
   // Integrated history items
   const historyItems = [
@@ -216,40 +256,114 @@ const AssetDetailPage: React.FC = () => {
               {/* Installed Software Section */}
               <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold">Installed Software</h3>
-                  <button className="text-xs font-bold text-primary px-3 py-1 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors">Manage Apps</button>
+                  <div>
+                    <h3 className="text-lg font-bold">Installed Software</h3>
+                    {softwareData?.verification && (
+                      <p className="text-xs text-[#617589] mt-1">
+                        Last scanned: {new Date(softwareData.verification.scannedAt).toLocaleString()} • 
+                        Total: {installedSoftwareList.length} applications • 
+                        Scanned by: {softwareData.verification.employeeId?.name || 'Unknown'}
+                      </p>
+                    )}
+                  </div>
+                  <button 
+                    onClick={fetchInstalledSoftware}
+                    className="text-xs font-bold text-primary px-3 py-1 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">refresh</span>
+                    Refresh
+                  </button>
                 </div>
-                {/* Logic for software table kept same as static mock for now */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-[#617589] uppercase tracking-wider">
-                        <th className="pb-3 px-2">Software Name</th>
-                        <th className="pb-3 px-2">Version</th>
-                        <th className="pb-3 px-2">Last Scan</th>
-                        <th className="pb-3 px-2 text-right">Security</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                      {installedSoftware.map((sw, i) => (
-                        <tr key={i} className="group hover:bg-gray-50 dark:hover:bg-gray-800/20">
-                          <td className="py-3 px-2 text-sm font-bold">{sw.name}</td>
-                          <td className="py-3 px-2 text-xs text-[#617589] font-mono">{sw.version}</td>
-                          <td className="py-3 px-2 text-xs text-[#617589]">{sw.date}</td>
-                          <td className="py-3 px-2 text-right">
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                              sw.status === 'Compliant' ? 'bg-green-100 text-green-700' :
-                              sw.status === 'Secured' ? 'bg-blue-100 text-blue-700' :
-                              'bg-amber-100 text-amber-700'
-                            }`}>
-                              {sw.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
+                {softwareLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : installedSoftwareList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-700 mb-4">inventory_2</span>
+                    <p className="text-sm font-semibold text-[#617589]">No software scan data available</p>
+                    <p className="text-xs text-[#617589] mt-1">Employee needs to run verification scan from their portal</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-[#617589] uppercase tracking-wider">
+                            <th className="pb-3 px-2">Software Name</th>
+                            <th className="pb-3 px-2">Version</th>
+                            <th className="pb-3 px-2">Publisher</th>
+                            <th className="pb-3 px-2">Install Date</th>
+                            <th className="pb-3 px-2 text-right">Source</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                          {paginatedSoftware.map((sw: any, i: number) => (
+                            <tr key={i} className="group hover:bg-gray-50 dark:hover:bg-gray-800/20">
+                              <td className="py-3 px-2 text-sm font-bold max-w-xs truncate">{sw.softwareName}</td>
+                              <td className="py-3 px-2 text-xs text-[#617589] font-mono">{sw.version || '-'}</td>
+                              <td className="py-3 px-2 text-xs text-[#617589] max-w-xs truncate">{sw.publisher || '-'}</td>
+                              <td className="py-3 px-2 text-xs text-[#617589]">{sw.installDate ? new Date(sw.installDate).toLocaleDateString() : '-'}</td>
+                              <td className="py-3 px-2 text-right">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                  sw.source === 'Registry' ? 'bg-blue-100 text-blue-700' :
+                                  sw.source === 'WMI' ? 'bg-green-100 text-green-700' :
+                                  sw.source === 'PackageManager' ? 'bg-purple-100 text-purple-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {sw.source || 'Unknown'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <div className="text-sm text-[#617589]">
+                          Showing {startIndex + 1} to {Math.min(endIndex, installedSoftwareList.length)} of {installedSoftwareList.length} applications
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleFirstPage}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            <span className="material-symbols-outlined text-xl">first_page</span>
+                          </button>
+                          <button
+                            onClick={handlePreviousPage}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            <span className="material-symbols-outlined text-xl">chevron_left</span>
+                          </button>
+                          <span className="px-4 py-2 text-sm font-semibold">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <button
+                            onClick={handleNextPage}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            <span className="material-symbols-outlined text-xl">chevron_right</span>
+                          </button>
+                          <button
+                            onClick={handleLastPage}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            <span className="material-symbols-outlined text-xl">last_page</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               
               {/* NEW SECTION: Asset Details */}

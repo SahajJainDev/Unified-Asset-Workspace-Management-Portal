@@ -17,6 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab }) => {
     { id: 'employees', label: 'Employees', icon: 'badge', path: '/employees' },
     { id: 'users', label: 'Users', icon: 'group', path: '/users' },
     { id: 'verification-list', label: 'Asset Verification', icon: 'fact_check', path: '/verification-list' },
+    { id: 'software-verifications', label: 'Software Verification', icon: 'inventory_2', path: '/software-verifications' },
     { id: 'quikr-logs', label: 'Quikr Logs', icon: 'bolt', path: '/quikr-logs' },
     { id: 'software', label: 'Software', icon: 'package_2', path: '/software' },
     { id: 'reports', label: 'Reports', icon: 'monitoring', path: '/reports' },

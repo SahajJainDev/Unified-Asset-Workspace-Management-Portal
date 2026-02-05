@@ -20,6 +20,8 @@ import UsersPage from './pages/UsersPage';
 import UserDetailsPage from './pages/UserDetailsPage';
 import LicenseDetailPage from './pages/LicenseDetailPage';
 import SearchResultsPage from './pages/SearchResultsPage';
+import SoftwareVerificationPage from './pages/SoftwareVerificationPage';
+import SoftwareVerificationListPage from './pages/SoftwareVerificationListPage';
 
 const App: React.FC = () => {
   return (
@@ -35,6 +37,7 @@ const App: React.FC = () => {
         <Route path="/licenses/:id" element={<LicenseDetailPage />} />
         <Route path="/verification" element={<VerificationPage />} />
         <Route path="/verification-list" element={<AssetVerificationListPage />} />
+        <Route path="/software-verifications" element={<SoftwareVerificationListPage />} />
         <Route path="/quikr-logs" element={<QuikrLogsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/upload" element={<UploadPage />} />
@@ -48,6 +51,7 @@ const App: React.FC = () => {
         {/* User Specific Routes */}
         <Route path="/user/verify" element={<UserVerificationPage />} />
         <Route path="/user/seat" element={<UserSeatAllocationPage />} />
+        <Route path="/user/software-verify" element={<SoftwareVerificationPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
