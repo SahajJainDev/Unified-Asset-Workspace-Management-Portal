@@ -320,7 +320,7 @@ const UserDetailsPage: React.FC = () => {
                                                 <tr key={asset._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
                                                     <td className="px-6 py-4 font-mono text-sm font-bold text-gray-500">{asset.assetTag}</td>
                                                     <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{asset.assetName}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-500">{asset.assetType || 'Laptop'}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-500">{asset.assetType || '-'}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-500">{asset.assignmentDate || '-'}</td>
                                                     <td className="px-6 py-4 text-right">
                                                         <button

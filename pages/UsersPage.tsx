@@ -164,27 +164,6 @@ const UsersPage: React.FC = () => {
               </button>
             </div>
           </div>
-          {/* Pagination controls */}
-          <div className="max-w-[1200px] w-full mx-auto px-6 pb-8 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="font-bold">Rows:</span>
-              <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-white border rounded px-2 py-1">
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-              <span className="ml-4">Total: {totalCount}</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button disabled={page <= 1} onClick={() => setPage(1)} className="px-3 py-1 rounded border">First</button>
-              <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 rounded border">Prev</button>
-              <div className="px-3 py-1 border rounded">{page} / {totalPages}</div>
-              <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="px-3 py-1 rounded border">Next</button>
-              <button disabled={page >= totalPages} onClick={() => setPage(totalPages)} className="px-3 py-1 rounded border">Last</button>
-            </div>
-          </div>
 
           <div className="bg-white dark:bg-[#1a2632] rounded-xl shadow-sm border border-[#dbe0e6] dark:border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
@@ -253,6 +232,69 @@ const UsersPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Pagination controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 dark:text-gray-400 font-medium">Rows per page:</span>
+                <select 
+                  value={limit} 
+                  onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} 
+                  className="h-9 px-3 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer hover:border-gray-300 dark:hover:border-gray-600"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="hidden sm:block h-5 w-px bg-gray-300 dark:bg-gray-700"></div>
+              <span className="text-gray-600 dark:text-gray-400">
+                Showing <span className="font-semibold text-gray-900 dark:text-white">{filteredEmployees.length === 0 ? 0 : (page - 1) * limit + 1}</span> to <span className="font-semibold text-gray-900 dark:text-white">{Math.min(page * limit, totalCount)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalCount}</span> results
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={page <= 1} 
+                onClick={() => setPage(1)} 
+                className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
+                title="First page"
+              >
+                <span className="material-symbols-outlined text-[18px]">first_page</span>
+              </button>
+              <button 
+                disabled={page <= 1} 
+                onClick={() => setPage(page - 1)} 
+                className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
+                title="Previous page"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              <div className="flex items-center gap-2 px-4 h-9 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{page}</span>
+                <span className="text-sm text-gray-400">/</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{totalPages}</span>
+              </div>
+              <button 
+                disabled={page >= totalPages} 
+                onClick={() => setPage(page + 1)} 
+                className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
+                title="Next page"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+              <button 
+                disabled={page >= totalPages} 
+                onClick={() => setPage(totalPages)} 
+                className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
+                title="Last page"
+              >
+                <span className="material-symbols-outlined text-[18px]">last_page</span>
+              </button>
             </div>
           </div>
         </div>
