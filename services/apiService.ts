@@ -149,6 +149,17 @@ interface Room {
   updatedAt?: Date;
 }
 
+interface Attachment {
+  _id: string;
+  assetId: string;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileSize: number;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
 interface Workstation {
   _id?: string;
   workstationId: string;
@@ -433,6 +444,38 @@ class ApiService {
 
   async getDeskByEmployee(employeeId: string): Promise<any> {
     return this.request<any>(`/desks/employee/${employeeId}`);
+  }
+
+  // Attachment operations
+  async uploadAttachments(assetId: string, files: File[]): Promise<Attachment[]> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+
+    const url = `${API_BASE_URL}/attachments/assets/${assetId}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.message || 'Upload failed');
+    }
+    return responseData;
+  }
+
+  async getAttachments(assetId: string): Promise<Attachment[]> {
+    return this.request<Attachment[]>(`/attachments/assets/${assetId}`);
+  }
+
+  async deleteAttachment(id: string): Promise<void> {
+    return this.request<void>(`/attachments/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  getDownloadUrl(id: string): string {
+    return `${API_BASE_URL}/attachments/download/${id}`;
   }
 }
 
