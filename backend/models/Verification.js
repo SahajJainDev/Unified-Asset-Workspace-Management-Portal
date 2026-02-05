@@ -6,13 +6,24 @@ const verificationSchema = new mongoose.Schema({
     ref: 'Asset',
     required: true
   },
+  enteredAssetId: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  employeeId: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  employeeName: {
+    type: String,
+    required: true,
+    trim: true
+  },
   status: {
     type: String,
     enum: ['Verified', 'Pending', 'Flagged'],
-    required: true
-  },
-  verifiedBy: {
-    type: String,
     required: true
   },
   verificationDate: {

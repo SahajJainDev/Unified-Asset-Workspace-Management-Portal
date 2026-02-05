@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import UserSidebar from '../components/UserSidebar';
 import Header from '../components/Header';
 import apiService from '../services/apiService';
@@ -17,16 +18,30 @@ const UserVerificationPage: React.FC = () => {
   const [assets, setAssets] = useState<AssetVerification[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserAssets = async () => {
       try {
         setLoading(true);
-        // For demo, we'll fetch assets assigned to Employee Number 'EMP001' or similar
-        // Or just fetch all and filter for the sake of demo if we don't have a login system
-        const data = await apiService.getAssets();
-        // Mocking: Assume first few assets belong to current user
-        const userAssets = data.slice(0, 4).map((a: any) => ({
+        setError('');
+
+        // Get logged-in user from localStorage
+        const storedUser = localStorage.getItem('currentUser');
+        if (!storedUser) {
+          navigate('/login');
+          return;
+        }
+
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+
+        // Fetch assets assigned to this employee's ID (empId)
+        const data = await apiService.getAssetsByEmployee(userData.empId);
+
+        const mappedAssets = data.map((a: any) => ({
           id: a._id,
           assetTag: a.assetTag,
           name: a.assetName,
@@ -35,16 +50,17 @@ const UserVerificationPage: React.FC = () => {
           isLost: false,
           type: a.assetType || 'Laptop'
         }));
-        setAssets(userAssets);
-      } catch (err) {
+        setAssets(mappedAssets);
+      } catch (err: any) {
         console.error('Failed to fetch assets:', err);
+        setError('Failed to load your assigned assets. Please contact IT.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserAssets();
-  }, []);
+  }, [navigate]);
 
   const handleIdChange = (id: string, value: string) => {
     setAssets(prev => prev.map(a => a.id === id ? { ...a, enteredId: value, isLost: false } : a));
@@ -56,14 +72,17 @@ const UserVerificationPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     try {
-      // Submit each verification
+      // Submit each verification with real data
       await Promise.all(assets.map(asset =>
         apiService.submitVerification({
           assetId: asset.id,
+          enteredAssetId: asset.enteredId || (asset.isLost ? 'REPORTED_LOST' : ''),
+          employeeId: user.empId,
           status: asset.isLost ? 'Flagged' : (asset.enteredId === asset.expectedId ? 'Verified' : 'Pending'),
-          verifiedBy: 'Alex Rivera', // Mocked user
-          notes: asset.isLost ? 'Reported lost by user' : ''
+          notes: asset.isLost ? 'Reported lost by user' : (asset.enteredId !== asset.expectedId ? 'ID Mismatch reported by user' : '')
         })
       ));
       setSubmitted(true);
@@ -83,7 +102,7 @@ const UserVerificationPage: React.FC = () => {
               <span className="material-symbols-outlined text-5xl">verified</span>
             </div>
             <h2 className="text-3xl font-black">Verification Submitted</h2>
-            <p className="text-[#617589]">Thank you for completing your quarterly asset attestation. Your IT records have been updated.</p>
+            <p className="text-[#617589]">Thank you, {user?.fullName || 'Employee'}, for completing your quarterly asset attestation. Your IT records have been updated.</p>
             <button
               onClick={() => setSubmitted(false)}
               className="px-8 py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20"
@@ -102,13 +121,33 @@ const UserVerificationPage: React.FC = () => {
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
         <div className="max-w-[1000px] w-full mx-auto px-6 py-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="mb-8">
-            <h1 className="text-4xl font-black tracking-tight">Verify Your Assets</h1>
-            <p className="text-[#617589] mt-2">Quarterly hardware compliance check. Please verify the items currently in your possession.</p>
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <p className="text-primary font-black text-xs uppercase tracking-widest mb-1">Welcome back, {user?.fullName || 'Employee'}</p>
+              <h1 className="text-4xl font-black tracking-tight">Verify Your Assets</h1>
+              <p className="text-[#617589] mt-1">Quarterly hardware compliance check for {user?.department || 'your department'}.</p>
+            </div>
+            <div className="bg-white dark:bg-[#1a2632] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center gap-3">
+              <div className="size-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary text-sm">badge</span>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-[#617589] uppercase tracking-tighter">Employee ID</p>
+                <p className="text-sm font-bold">{user?.empId || '---'}</p>
+              </div>
+            </div>
           </div>
 
           {loading ? (
             <div className="text-center py-20 text-[#617589]">Fetching your assigned assets...</div>
+          ) : assets.length === 0 ? (
+            <div className="bg-white dark:bg-[#1a2632] p-12 rounded-[2rem] border border-[#dbe0e6] dark:border-gray-800 text-center space-y-4">
+              <div className="size-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto text-gray-400">
+                <span className="material-symbols-outlined text-4xl">inventory_2</span>
+              </div>
+              <h3 className="text-xl font-bold">No Assets Found</h3>
+              <p className="text-[#617589] max-w-sm mx-auto">We couldn't find any hardware assets assigned to your profile. If you believe this is an error, please contact IT Support.</p>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

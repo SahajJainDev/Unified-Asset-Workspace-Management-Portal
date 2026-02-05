@@ -28,8 +28,9 @@ const AssetVerificationListPage: React.FC = () => {
 
   const filteredVerifications = useMemo(() => {
     return verifications.filter(v =>
-      v.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.n.toLowerCase().includes(searchQuery.toLowerCase())
+      v.assetTag.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.assetName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, verifications]);
 
@@ -79,10 +80,11 @@ const AssetVerificationListPage: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-800/50 text-[#617589] dark:text-gray-400 uppercase text-[11px] font-bold tracking-wider">
-                      <th className="px-6 py-4">Asset ID</th>
+                      <th className="px-6 py-4">Actual Asset Tag</th>
+                      <th className="px-6 py-4">Entered Asset ID</th>
                       <th className="px-6 py-4">Name & Model</th>
                       <th className="px-6 py-4">Verified By</th>
-                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4">Date & Time</th>
                       <th className="px-6 py-4">Status</th>
                     </tr>
                   </thead>
@@ -93,15 +95,22 @@ const AssetVerificationListPage: React.FC = () => {
                         className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer group"
                         onClick={() => navigate(`/assets/${v.id}`)}
                       >
-                        <td className="px-6 py-4 font-mono text-xs font-semibold text-primary">{v.id}</td>
-                        <td className="px-6 py-4 text-sm font-bold">{v.n}</td>
-                        <td className="px-6 py-4 text-sm">{v.vb}</td>
-                        <td className="px-6 py-4 text-xs text-[#617589]">{v.d}</td>
+                        <td className="px-6 py-4 font-mono text-xs font-semibold text-primary">{v.assetTag}</td>
+                        <td className={`px-6 py-4 font-mono text-xs font-semibold ${v.enteredAssetId !== v.assetTag ? 'text-red-500' : 'text-emerald-500'}`}>{v.enteredAssetId}</td>
+                        <td className="px-6 py-4 text-sm font-bold">{v.assetName}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${v.sc === 'green' ? 'bg-green-100 text-green-700' :
-                            v.sc === 'amber' ? 'bg-amber-100 text-amber-700' :
+                          <p className="text-sm font-bold">{v.employeeName}</p>
+                          <p className="text-[10px] text-[#617589] uppercase tracking-tighter">ID: {v.employeeId}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-xs text-[#617589]">{v.date}</p>
+                          <p className="text-[10px] text-gray-400">{v.time}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${v.statusColor === 'green' ? 'bg-green-100 text-green-700' :
+                            v.statusColor === 'amber' ? 'bg-amber-100 text-amber-700' :
                               'bg-blue-100 text-blue-700'
-                            }`}>{v.s}</span>
+                            }`}>{v.status}</span>
                         </td>
                       </tr>
                     ))}
