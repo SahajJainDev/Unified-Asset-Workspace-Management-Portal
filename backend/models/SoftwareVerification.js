@@ -29,7 +29,6 @@ const InstalledSoftwareSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['UserRegistry', 'WMI', 'PackageManager'],
     default: 'UserRegistry'
   }
 }, {
