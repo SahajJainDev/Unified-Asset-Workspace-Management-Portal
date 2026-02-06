@@ -60,9 +60,12 @@ router.post('/upload-scan', async (req, res) => {
       asset = await Asset.create({
           assetTag: assetId,
           assetName: systemInfo?.computerName || assetId,
-          category: 'Laptop', // Default assumption
-          status: 'In Use',
-          assignedTo: employee._id
+          assetType: 'Laptop', // Required by schema default, but good to be explicit
+          status: 'IN USE', // Uppercase as per schema enum
+          assignedTo: employee.empId, // Using empId string as per some schema patterns, or employee._id if ObjectId reference. 
+                                     // Looking at Asset.js, assignedTo is String. Employee.js has empId.
+                                     // Ideally we should sync consistent ID usage.
+          condition: 'Good'
       });
     }
 
