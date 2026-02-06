@@ -8,69 +8,98 @@ const { logActivity } = require('../utils/activityLogger');
 // Upload scan results
 router.post('/upload-scan', async (req, res) => {
   try {
-    const { employeeNumber, assetId, scanData } = req.body;
+    const { employeeID, assetId, systemInfo, softwareList } = req.body;
 
     console.log('=== Software Verification Upload ===');
-    console.log('Employee Number:', employeeNumber);
+    console.log('Employee ID:', employeeID);
     console.log('Asset ID:', assetId);
-    console.log('Scan Data:', scanData ? 'Present' : 'Missing');
-
-    // Validate scan data structure
-    if (!scanData?.SystemInfo || !scanData?.InstalledSoftware) {
-      console.log('ERROR: Invalid scan data format');
-      return res.status(400).json({ error: 'Invalid scan data format' });
+    
+    // Validate required fields
+    if (!employeeID || !assetId) {
+       return res.status(400).json({ error: 'Missing required fields: employeeID or assetId' });
     }
 
-    console.log('Software Count:', scanData.InstalledSoftware.length);
+    const installedSoftware = softwareList || [];
+    console.log('Software Count:', installedSoftware.length);
 
-    // Verify employee
-    const employee = await Employee.findOne({ empId: employeeNumber });
+    // Verify employee (using empId, email, or name)
+    let employee = await Employee.findOne({ empId: employeeID });
 
     if (!employee) {
-      console.log('ERROR: Employee not found with empId:', employeeNumber);
-      return res.status(404).json({ error: `Employee not found with ID: ${employeeNumber}. Please check the Employee Number.` });
+      console.log(`Employee not found with empId: ${employeeID}. Trying alternative lookups...`);
+      
+      // Try by email (assuming username part matches)
+      // Escaping regex characters just in case
+      const safeId = employeeID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      employee = await Employee.findOne({ 
+        $or: [
+          { email: { $regex: new RegExp(`^${safeId}@`, 'i') } }, // Match start of email
+          { email: { $regex: new RegExp(safeId, 'i') } }, // Match anywhere in email (fallback)
+          { fullName: { $regex: new RegExp(safeId.replace('.', ' '), 'i') } } // "sahaj.jain" -> "sahaj jain" match
+        ]
+      });
+    }
+
+    if (!employee) {
+      console.log('Employee not found with any method for:', employeeID);
+       return res.status(404).json({ error: `Employee not found with ID: ${employeeID}. Ensure the user exists in the database with a matching empId, email, or name.` });
     }
 
     console.log('Employee found:', employee.fullName);
 
-    // Verify asset
-    const asset = await Asset.findOne({ assetTag: assetId });
+    // Verify or Create Asset
+    // The script sends computerName as assetId.
+    let asset = await Asset.findOne({ assetTag: assetId });
 
     if (!asset) {
-      console.log('ERROR: Asset not found with assetTag:', assetId);
-      return res.status(404).json({ error: `Asset not found with ID: ${assetId}. Please check the Asset ID.` });
+      console.log('Asset not found, creating new asset record for:', assetId);
+      // Auto-create asset if it doesn't exist?
+      // "assetId" from script is "computerName".
+      // let's create a basic asset.
+      asset = await Asset.create({
+          assetTag: assetId,
+          assetName: systemInfo?.computerName || assetId,
+          category: 'Laptop', // Default assumption
+          status: 'In Use',
+          assignedTo: employee._id
+      });
     }
-
-    console.log('Asset found:', asset.assetName);
 
     // Create verification record
     const verification = await SoftwareVerification.create({
-      employeeId: employeeNumber,
+      employeeId: employeeID,
       assetId: assetId,
       systemInfo: {
-        computerName: scanData.SystemInfo.ComputerName,
-        userName: scanData.SystemInfo.UserName,
-        domain: scanData.SystemInfo.Domain,
-        osVersion: scanData.SystemInfo.OSVersion,
-        osArchitecture: scanData.SystemInfo.OSArchitecture,
-        serialNumber: scanData.SystemInfo.SerialNumber,
-        manufacturer: scanData.SystemInfo.Manufacturer,
-        model: scanData.SystemInfo.Model,
-        totalRAM: scanData.SystemInfo.TotalRAM,
-        processor: scanData.SystemInfo.Processor,
-        scanDate: new Date(scanData.SystemInfo.ScanDate)
+        computerName: systemInfo?.computerName,
+        userName: systemInfo?.userName,
+        domain: systemInfo?.domain,
+        ipAddress: systemInfo?.ipAddress,
+        osVersion: systemInfo?.osVersion,
+        osBuildNumber: systemInfo?.buildNumber,
+        osArchitecture: systemInfo?.osArchitecture, // Script might need to add this if missing
+        serialNumber: systemInfo?.serialNumber, // Script might need to add this
+        manufacturer: systemInfo?.manufacturer, // Script might need to add this
+        model: systemInfo?.model, // Script might need to add this
+        totalRAM: systemInfo?.totalRAM, // Script might need to add this
+        processor: systemInfo?.processor, // Script might need to add this
+        adminRights: systemInfo?.adminRights,
+        encryptionStatus: systemInfo?.encryptionStatus,
+        vpnSoftware: systemInfo?.vpnSoftware,
+        antivirus: systemInfo?.antivirus,
+        usbStorageAccess: systemInfo?.usbStorageAccess,
+        scanDate: systemInfo?.scanDate ? new Date(systemInfo.scanDate) : new Date()
       },
-      scannedAt: new Date(scanData.SystemInfo.ScanDate),
+      scannedAt: new Date(),
       status: 'COMPLETED',
-      softwareCount: scanData.InstalledSoftware.length
+      softwareCount: installedSoftware.length
     });
 
     // Save installed software
     const softwareRecords = [];
-    for (const software of scanData.InstalledSoftware) {
+    for (const software of installedSoftware) {
       // Skip entries without a name
       if (!software.Name || software.Name.trim() === '') {
-        console.log('Skipping software with no name');
         continue;
       }
 
@@ -81,12 +110,12 @@ router.post('/upload-scan', async (req, res) => {
         publisher: software.Publisher || 'Unknown',
         installDate: software.InstallDate || null,
         installLocation: software.InstallLocation || null,
-        source: software.Source || 'UserRegistry'
+        source: 'ScriptScan'
       });
       softwareRecords.push(record);
     }
 
-    console.log(`Saved ${softwareRecords.length} software records out of ${scanData.InstalledSoftware.length} total`);
+    console.log(`Saved ${softwareRecords.length} software records.`);
 
     // Log activity
     await logActivity(
@@ -97,21 +126,16 @@ router.post('/upload-scan', async (req, res) => {
       'verification'
     );
 
-    console.log('SUCCESS: Verification saved with ID:', verification._id);
-
     res.json({
       success: true,
       verificationId: verification._id,
       softwareCount: softwareRecords.length,
-      computerName: scanData.SystemInfo.ComputerName,
-      scanDate: scanData.SystemInfo.ScanDate,
       message: 'Software verification completed successfully',
     });
 
   } catch (error) {
     console.error('=== Software Verification Upload Error ===');
     console.error('Error:', error);
-    console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Failed to process scan data', details: error.message });
   }
 });

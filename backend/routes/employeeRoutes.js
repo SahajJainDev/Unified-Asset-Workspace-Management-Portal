@@ -111,6 +111,11 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
           workstationId: workstationId && !isEmptyValue(workstationId) ? String(workstationId).trim() : ''
         };
 
+        // Generate userName from fullName (Space to Dot)
+        if (employeeData.fullName) {
+          employeeData.userName = employeeData.fullName.replace(/\s+/g, '.');
+        }
+
         // Upsert Employee
         await Employee.findOneAndUpdate(
           { empId: String(empId).trim() },
@@ -208,7 +213,8 @@ router.post("/", async (req, res) => {
       role: req.body.role || 'Employee',
       isActive: req.body.isActive !== undefined ? req.body.isActive : true,
       email: req.body.email || '',
-      department: req.body.department || ''
+      department: req.body.department || '',
+      userName: req.body.userName ? String(req.body.userName).trim() : String(fullName).trim().replace(/\s+/g, '.')
     });
 
     await employee.save();
@@ -242,6 +248,11 @@ router.get("/:id", async (req, res) => {
 // UPDATE Employee
 router.patch("/:id", async (req, res) => {
   try {
+    // If fullName is being updated, regenerate userName (unless userName is being explicitly updated or already exists in body)
+    if (req.body.fullName && !req.body.userName) {
+      req.body.userName = String(req.body.fullName).trim().replace(/\s+/g, '.');
+    }
+
     let query = {};
     const { ObjectId } = require('mongoose').Types;
 

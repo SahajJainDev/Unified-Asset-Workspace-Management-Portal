@@ -129,6 +129,7 @@ const EmployeesPage: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-3 font-semibold text-gray-900 dark:text-white">EMP ID</th>
                                     <th className="px-6 py-3 font-semibold text-gray-900 dark:text-white">Full Name</th>
+                                    <th className="px-6 py-3 font-semibold text-gray-900 dark:text-white">User Name</th>
                                     <th className="px-6 py-3 font-semibold text-gray-900 dark:text-white">Added On</th>
                                 </tr>
                             </thead>
@@ -142,6 +143,7 @@ const EmployeesPage: React.FC = () => {
                                         <tr key={emp._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                             <td className="px-6 py-3 font-mono text-primary font-medium">{emp.empId}</td>
                                             <td className="px-6 py-3 text-gray-700 dark:text-gray-300 font-medium">{emp.fullName}</td>
+                                            <td className="px-6 py-3 text-gray-700 dark:text-gray-300 font-medium">{emp.userName || '-'}</td>
                                             <td className="px-6 py-3 text-gray-500">{emp.createdAt ? new Date(emp.createdAt).toLocaleDateString() : '-'}</td>
                                         </tr>
                                     ))
@@ -286,6 +288,15 @@ const EmployeesPage: React.FC = () => {
                                         value={newEmployee.fullName}
                                         onChange={e => setNewEmployee({...newEmployee, fullName: e.target.value})}
                                         placeholder="e.g. John Doe"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">User Name (Optional)</label>
+                                    <input 
+                                        className="w-full h-10 rounded-lg border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none"
+                                        value={(newEmployee as any).userName || ''}
+                                        onChange={e => setNewEmployee({...newEmployee, userName: e.target.value} as any)}
+                                        placeholder="e.g. John.Doe"
                                     />
                                 </div>
                             </div>
