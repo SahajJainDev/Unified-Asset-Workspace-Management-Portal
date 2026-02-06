@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Asset = require("../models/Asset");
+const { logActivity } = require('../utils/activityLogger');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const fs = require('fs');
@@ -206,18 +207,15 @@ router.get("/", async (req, res) => {
   try {
     const filter = {};
     if (req.query.assignedTo) {
-      // assets stored employee.number as string
-      filter['employee.number'] = req.query.assignedTo;
+      // Match assets by employee.number OR top-level assignedTo field
+      // (assets can be assigned via different flows that populate different fields)
+      filter['$or'] = [
+        { 'employee.number': req.query.assignedTo },
+        { assignedTo: req.query.assignedTo }
+      ];
     }
     if (req.query.status) {
       filter['status'] = req.query.status;
-      if (req.query.status === 'Available') {
-        filter['$or'] = [
-          { 'employee.number': { $exists: false } },
-          { 'employee.number': null },
-          { 'employee.number': '' }
-        ];
-      }
     }
     const assets = await Asset.find(filter);
     res.json(assets);
@@ -249,6 +247,51 @@ router.get("/:id", async (req, res) => {
   } catch (error) {
     console.error('Error fetching asset:', error);
     res.status(500).json({ message: 'Failed to fetch asset' });
+  }
+});
+
+// PATCH Asset (partial update — no full validation required)
+// Useful for assignment changes, status updates, etc.
+router.patch("/:id", async (req, res) => {
+  try {
+    let query = {};
+    const { ObjectId } = require('mongoose').Types;
+
+    if (ObjectId.isValid(req.params.id)) {
+      query = { _id: req.params.id };
+    } else {
+      query = { assetTag: req.params.id };
+    }
+
+    const originalAsset = await Asset.findOne(query);
+    if (!originalAsset) return res.status(404).json({ message: "Asset not found" });
+
+    const updatedAsset = await Asset.findOneAndUpdate(
+      query,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+
+    // Log Assignment Changes
+    const actor = req.body.modifiedBy || req.body.addedBy || 'Admin';
+    if (updatedAsset.status === 'Assigned' && originalAsset.status !== 'Assigned') {
+      const assignee = updatedAsset.employee?.name || updatedAsset.assignedTo || 'Employee';
+      await logActivity(
+        'Asset Assigned',
+        `${actor} assigned ${updatedAsset.assetName} ${updatedAsset.assetTag} to ${assignee}`,
+        'assignment_ind',
+        'bg-blue-50 text-blue-600',
+        'asset'
+      );
+    }
+
+    res.json(updatedAsset);
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Asset tag must be unique' });
+    } else {
+      res.status(400).json({ message: error.message });
+    }
   }
 });
 
@@ -362,8 +405,6 @@ router.delete("/all-assets", async (req, res) => {
     res.status(500).json({ message: 'Failed to delete all assets' });
   }
 });
-
-const { logActivity } = require('../utils/activityLogger');
 
 // DELETE Asset
 router.delete("/:id", async (req, res) => {

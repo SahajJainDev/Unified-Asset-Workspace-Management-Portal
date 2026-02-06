@@ -30,7 +30,13 @@ const AssetsPage: React.FC = () => {
         d: `${asset.model || ''} • ${asset.specs?.processor || ''} ${asset.specs?.memory || ''}`.trim(),
         u: (asset.employee && asset.employee.name) || asset.assignedTo || 'Unassigned',
         s: asset.status,
-        sc: asset.status === 'IN USE' ? 'green' : asset.status === 'REPAIR' ? 'amber' : 'blue'
+        sc: asset.status === 'Assigned' ? 'purple' :
+            asset.status === 'Available' ? 'emerald' :
+            asset.status === 'IN USE' ? 'green' :
+            asset.status === 'STORAGE' ? 'slate' :
+            asset.status === 'REPAIR' ? 'amber' :
+            asset.status === 'Damaged' ? 'red' :
+            asset.status === 'Not Available' ? 'rose' : 'blue'
       }));
       setAssets(mappedAssets);
       // Clear selection on refresh
@@ -245,8 +251,14 @@ const AssetsPage: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm">{asset.u}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${asset.sc === 'green' ? 'bg-green-100 text-green-700' :
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              asset.sc === 'purple' ? 'bg-purple-100 text-purple-700' :
+                              asset.sc === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
+                              asset.sc === 'green' ? 'bg-green-100 text-green-700' :
+                              asset.sc === 'slate' ? 'bg-slate-100 text-slate-600' :
                               asset.sc === 'amber' ? 'bg-amber-100 text-amber-700' :
+                              asset.sc === 'red' ? 'bg-red-100 text-red-700' :
+                              asset.sc === 'rose' ? 'bg-rose-100 text-rose-600' :
                                 'bg-blue-100 text-blue-700'
                             }`}>{asset.s}</span>
                         </td>

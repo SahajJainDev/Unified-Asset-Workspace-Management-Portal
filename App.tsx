@@ -44,8 +44,8 @@ const App: React.FC = () => {
         <Route path="/map" element={<FloorMapPage />} />
         <Route path="/employees" element={<EmployeesPage />} />
 
-        {/* New Admin Modules */}
-        <Route path="/users" element={<UsersPage />} />
+        {/* /users now redirects to unified employees page */}
+        <Route path="/users" element={<Navigate to="/employees" replace />} />
         <Route path="/users/:id" element={<UserDetailsPage />} />
 
         {/* User Specific Routes */}
