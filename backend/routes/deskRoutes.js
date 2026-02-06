@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Desk = require("../models/Desk");
+const Asset = require("../models/Asset");
 const multer = require('multer');
 const xlsx = require('xlsx');
 const fs = require('fs');
@@ -20,6 +21,36 @@ const upload = multer({ storage: storage });
 
 const { logActivity } = require('../utils/activityLogger');
 
+// Helper function to extract block from workstation ID (e.g., WS-3A-101 -> 3A)
+function extractBlockFromWorkstation(wsId) {
+    if (!wsId) return 'A';
+    const match = String(wsId).match(/WS-(\d+[A-Z])-/);
+    return match ? match[1] : 'A';
+}
+
+// Helper function to normalize asset type to match schema enum
+function normalizeAssetType(type) {
+    if (!type) return 'Other';
+    
+    const typeStr = String(type).trim();
+    const validTypes = ['Laptop', 'Monitor', 'Mouse', 'Keyboard', 'Smartphone', 'Tablet', 'Other'];
+    
+    // Try exact match (case-insensitive)
+    const exactMatch = validTypes.find(t => t.toLowerCase() === typeStr.toLowerCase());
+    if (exactMatch) return exactMatch;
+    
+    // Try partial matches for common variations
+    const lowerType = typeStr.toLowerCase();
+    if (lowerType.includes('laptop') || lowerType.includes('notebook')) return 'Laptop';
+    if (lowerType.includes('monitor') || lowerType.includes('display') || lowerType.includes('screen')) return 'Monitor';
+    if (lowerType.includes('mouse') || lowerType.includes('mice')) return 'Mouse';
+    if (lowerType.includes('keyboard') || lowerType.includes('kbd')) return 'Keyboard';
+    if (lowerType.includes('phone') || lowerType.includes('mobile')) return 'Smartphone';
+    if (lowerType.includes('tablet') || lowerType.includes('ipad')) return 'Tablet';
+    
+    return 'Other';
+}
+
 // BULK UPLOAD Desks
 router.post("/bulk-upload", upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -28,75 +59,119 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
 
     const results = {
         upsertedCount: 0,
+        assetsCreated: 0,
         errors: []
     };
 
     try {
-        const workbook = xlsx.readFile(req.file.path);
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
+        const fileExt = path.extname(req.file.originalname).toLowerCase();
+        let rows = [];
 
-        // User updated format: Standard Excel with headers on Row 1 (index 0).
-        // Removing { range: 1 } to use default behavior.
-        const rows = xlsx.utils.sheet_to_json(sheet);
+        if (fileExt === '.csv') {
+            // Parse CSV file
+            const workbook = xlsx.readFile(req.file.path, { type: 'file' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            rows = xlsx.utils.sheet_to_json(sheet);
+        } else if (fileExt === '.xlsx' || fileExt === '.xls') {
+            // Parse Excel file
+            const workbook = xlsx.readFile(req.file.path);
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            rows = xlsx.utils.sheet_to_json(sheet);
+        } else {
+            return res.status(400).json({ message: "Unsupported file format. Please upload CSV or XLSX file." });
+        }
 
         console.log(`Processing ${rows.length} rows from upload.`);
 
-        // Clear existing data and indexes by dropping the collection
-        // This solves the E11000 duplicate key error on 'deskId' which might be a lingering index
+        // Clear existing desk data
         try {
             await Desk.collection.drop();
             console.log('Dropped existing desks collection');
         } catch (err) {
-            // Ignore error if collection doesn't exist
             if (err.code !== 26) {
                 console.log('Error dropping collection:', err.message);
             }
         }
 
+        // Group rows by workstation to aggregate desk info and collect all assets
+        const workstationMap = new Map();
+
         for (let i = 0; i < rows.length; i++) {
             const rowData = rows[i];
-            const rowNumber = i + 3;
+            const rowNumber = i + 2;
 
             try {
-                // S.no | WS # | EMP ID | User Name | Project | Manager | Block
-                const workstationId = rowData['WS #'];
-
+                const workstationId = rowData['WS #'] || rowData['Workstation ID'];
                 if (!workstationId) continue;
 
                 const empId = rowData['EMP ID'];
-                const userName = rowData['User Name'];
-                const project = rowData['Project'];
+                const userName = rowData['User Name'] || rowData['Full Name'];
+                const project = rowData['Project'] || rowData['Department'];
                 const manager = rowData['Manager'];
-                const block = rowData['Block'];
+                const block = rowData['Block'] || extractBlockFromWorkstation(workstationId);
 
-                // Determine status based on EMP ID (Primary) or User Name (Secondary)
-                let status = 'Available';
-                const hasEmpId = empId && empId !== 0 && String(empId).trim() !== '';
-                const hasUserName = userName && String(userName).toLowerCase() !== 'empty' && String(userName).trim() !== '';
-
-                if (hasEmpId || hasUserName) {
-                    status = 'Occupied';
+                // Create/update workstation entry
+                if (!workstationMap.has(workstationId)) {
+                    const hasEmpId = empId && empId !== 0 && String(empId).trim() !== '';
+                    const hasUserName = userName && String(userName).toLowerCase() !== 'empty' && String(userName).trim() !== '';
+                    
+                    workstationMap.set(workstationId, {
+                        workstationId: String(workstationId).trim(),
+                        block: block ? String(block).trim() : 'A',
+                        empId: (empId && empId !== 0) ? String(empId).trim() : '',
+                        userName: (userName && String(userName).toLowerCase() !== 'empty') ? String(userName).trim() : '',
+                        project: (project && project !== 0) ? String(project).trim() : '',
+                        manager: (manager && manager !== 0) ? String(manager).trim() : '',
+                        status: (hasEmpId || hasUserName) ? 'Occupied' : 'Available',
+                        isActive: true
+                    });
                 }
 
-                const updateData = {
-                    workstationId: String(workstationId).trim(),
-                    block: block ? String(block).trim() : 'A',
-                    empId: (empId && empId !== 0) ? String(empId).trim() : '',
-                    userName: (userName && String(userName).toLowerCase() !== 'empty') ? String(userName).trim() : '',
-                    project: (project && project !== 0) ? String(project).trim() : '',
-                    manager: (manager && manager !== 0) ? String(manager).trim() : '',
-                    status: status,
-                    isActive: true
-                };
+                // Process asset data if present
+                const assetId = rowData['Asset Id'];
+                const assetName = rowData['Asset Name'];
+                const assetType = rowData['Asset Type'];
+                
+                if (assetId && assetName) {
+                    const normalizedType = normalizeAssetType(assetType);
+                    
+                    console.log(`Processing asset: ${assetName} | Original Type: "${assetType}" | Normalized: "${normalizedType}"`);
+                    
+                    const assetData = {
+                        assetTag: String(assetId).trim(),
+                        assetName: String(assetName).trim(),
+                        assetType: normalizedType,
+                        model: rowData['Asset Model'] || '',
+                        make: rowData['Make'] || '',
+                        serialNumber: rowData['Serial Number'] || '',
+                        status: rowData['Asset Status'] || 'Assigned',
+                        condition: rowData['Asset Condition'] || 'Good',
+                        warrantyExpiry: rowData['Warranty Expires On'] ? new Date(rowData['Warranty Expires On']) : null,
+                        assignmentDate: rowData['Assignment Date'] ? new Date(rowData['Assignment Date']) : null,
+                        assignedTo: userName && String(userName).toLowerCase() !== 'empty' ? String(userName).trim() : '',
+                        employee: {
+                            number: empId ? String(empId).trim() : '',
+                            name: userName && String(userName).toLowerCase() !== 'empty' ? String(userName).trim() : '',
+                            department: project ? String(project).trim() : '',
+                            subDepartment: rowData['Sub Department'] || ''
+                        },
+                        specs: {
+                            processor: rowData['Processor'] || '',
+                            memory: rowData['RAM'] || '',
+                            storage: rowData['HDD'] || ''
+                        }
+                    };
 
-                await Desk.findOneAndUpdate(
-                    { workstationId: updateData.workstationId },
-                    updateData,
-                    { upsert: true, new: true, setDefaultsOnInsert: true }
-                );
-
-                results.upsertedCount++;
+                    // Upsert asset
+                    await Asset.findOneAndUpdate(
+                        { assetTag: assetData.assetTag },
+                        assetData,
+                        { upsert: true, new: true, setDefaultsOnInsert: true }
+                    );
+                    results.assetsCreated++;
+                }
 
             } catch (error) {
                 results.errors.push({
@@ -106,11 +181,20 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
             }
         }
 
+        // Insert all unique workstations
+        for (const deskData of workstationMap.values()) {
+            await Desk.findOneAndUpdate(
+                { workstationId: deskData.workstationId },
+                deskData,
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+        }
+
         fs.unlinkSync(req.file.path);
 
         await logActivity(
-            'Floor Map Updated',
-            `Bulk upload processed ${results.upsertedCount} desks`,
+            'Floor Map & Assets Updated',
+            `Bulk upload: ${results.upsertedCount} desks, ${results.assetsCreated} assets`,
             'map',
             'bg-indigo-50 text-indigo-600',
             'other'
@@ -120,7 +204,8 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
             message: "Bulk upload complete",
             summary: {
                 total: rows.length,
-                upserted: results.upsertedCount,
+                desks: results.upsertedCount,
+                assets: results.assetsCreated,
                 failed: results.errors.length
             },
             errors: results.errors
