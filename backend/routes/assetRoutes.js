@@ -79,6 +79,7 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
         const mappedAsset = {
           assetTag: rowData['Asset Id'],
           assetName: rowData['Asset Name'],
+          assetType: rowData['Asset Type'] || rowData['Type'] || 'Laptop',
           description: rowData['Asset Description / Location'],
           warrantyExpiry: rowData['Warranty Expires On'], // Date parsing might be needed
           condition: rowData['Asset Condition'],
@@ -116,21 +117,18 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
         if (!mappedAsset.assetName) throw new Error(`Row ${rowNumber}: Asset Name is required.`);
         if (!mappedAsset.assetTag) throw new Error(`Row ${rowNumber}: Asset Id (Tag) is required.`);
 
-        // Check for duplicate Asset Tag in DB
+        // Check for duplicate Asset Tag in DB - Update if exists, create if new
         const existingAsset = await Asset.findOne({ assetTag: mappedAsset.assetTag });
         if (existingAsset) {
-          throw new Error(`Row ${rowNumber}: Asset Tag ${mappedAsset.assetTag} already exists.`);
+          // Update existing asset
+          await Asset.findByIdAndUpdate(existingAsset._id, mappedAsset, { new: true });
+          results.insertedCount++; // Still count as processed
+        } else {
+          // Create new asset
+          const newAsset = new Asset(mappedAsset);
+          await newAsset.save();
+          results.insertedCount++;
         }
-
-        // Determine Asset Type? Assuming 'Laptop' or trying to infer?
-        // For now, we'll let it default to 'Laptop' or 'Other' if not specified in Excel,
-        // but Excel doesn't have an 'Asset Type' column listed in requirements. 
-        // We'll leave it as default or infer from 'Asset Name' if we wanted to be fancy.
-        // Keeping it default 'Laptop' as per Schema default for now.
-
-        const newAsset = new Asset(mappedAsset);
-        await newAsset.save();
-        results.insertedCount++;
 
       } catch (error) {
         results.failedCount++;

@@ -22,6 +22,21 @@ const employeeSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  subDepartment: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  mobile: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  workstationId: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   role: {
     type: String,
     enum: ['Admin', 'Employee'],

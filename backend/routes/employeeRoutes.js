@@ -60,6 +60,11 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
 
         const empIdKeys = ['emp id', 'empid', 'employee id', 'employeeid', 'employee number', 'employee_number', 'emp_number', 'id'];
         const fullNameKeys = ['full name', 'fullname', 'name', 'employee name', 'emp name', 'user name', 'username', 'user'];
+        const emailKeys = ['email', 'email address', 'email_address', 'e-mail'];
+        const mobileKeys = ['mobile', 'phone', 'mobile number', 'phone number', 'contact', 'contact number'];
+        const departmentKeys = ['department', 'dept'];
+        const subDepartmentKeys = ['sub department', 'subdepartment', 'sub dept', 'subdept', 'sub-department'];
+        const workstationKeys = ['workstation', 'workstation id', 'workstationid', 'desk', 'desk id', 'deskid', 'seat', 'seat id'];
 
         // Log the normalizedRow for the first few rows to help debug header mapping
         if (i < 5) {
@@ -72,6 +77,11 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
 
         const empId = findFirst(normalizedRow, empIdKeys);
         const fullName = findFirst(normalizedRow, fullNameKeys);
+        const email = findFirst(normalizedRow, emailKeys);
+        const mobile = findFirst(normalizedRow, mobileKeys);
+        const department = findFirst(normalizedRow, departmentKeys);
+        const subDepartment = findFirst(normalizedRow, subDepartmentKeys);
+        const workstationId = findFirst(normalizedRow, workstationKeys);
 
         const isEmptyValue = (v) => {
           if (v === undefined || v === null) return true;
@@ -90,15 +100,21 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
           throw new Error(`Row ${rowNumber}: Missing EMP ID or Full Name`);
         }
 
+        // Prepare employee data
+        const employeeData = {
+          empId: String(empId).trim(),
+          fullName: String(fullName).trim(),
+          email: email && !isEmptyValue(email) ? String(email).trim() : '',
+          mobile: mobile && !isEmptyValue(mobile) ? String(mobile).trim() : '',
+          department: department && !isEmptyValue(department) ? String(department).trim() : '',
+          subDepartment: subDepartment && !isEmptyValue(subDepartment) ? String(subDepartment).trim() : '',
+          workstationId: workstationId && !isEmptyValue(workstationId) ? String(workstationId).trim() : ''
+        };
+
         // Upsert Employee
         await Employee.findOneAndUpdate(
           { empId: String(empId).trim() },
-          {
-            empId: String(empId).trim(),
-            fullName: String(fullName).trim(),
-            // Default to Employee/Active if not in excel, or standard defaults apply on upsert
-            // If columns exist in excel, we could map them too. Assuming not for now.
-          },
+          employeeData,
           { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 

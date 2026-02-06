@@ -1,0 +1,32 @@
+EMP ID,Full Name,Email,Mobile,Department,Sub Department,Workstation ID,Asset Id,Asset Name,Asset Type,Asset Model,Make,Serial Number,RAM,Processor,HDD,Asset Status,Asset Condition,Warranty Expires On,Assignment Date
+1042,Aakash Gilotra,aakash.gilotra@scalex.com,+91-9876543210,Engineering,Software Development,WS-3A-101,LAP-001,Dell Latitude 5540,Laptop,Latitude 5540,Dell,G8XTKX3,16GB,Intel Core i7-13th Gen,512GB SSD,Assigned,Good,2026-12-31,2025-01-15
+1042,Aakash Gilotra,aakash.gilotra@scalex.com,+91-9876543210,Engineering,Software Development,WS-3A-101,MON-001,Dell UltraSharp 27",Monitor,U2722DE,Dell,SN-MON-45678,,,,Assigned,Good,2027-01-10,2025-01-15
+1042,Aakash Gilotra,aakash.gilotra@scalex.com,+91-9876543210,Engineering,Software Development,WS-3A-101,KEY-001,Logitech MX Keys,Keyboard,MX Keys,Logitech,SN-LOG-78901,,,,Assigned,Good,2025-12-31,2025-01-15
+1042,Aakash Gilotra,aakash.gilotra@scalex.com,+91-9876543210,Engineering,Software Development,WS-3A-101,MOU-001,Logitech MX Master 3,Mouse,MX Master 3,Logitech,SN-LOG-78902,,,,Assigned,Good,2025-12-31,2025-01-15
+1043,Priya Sharma,priya.sharma@scalex.com,+91-9876543211,Engineering,Quality Assurance,WS-3A-102,LAP-002,HP EliteBook 840,Laptop,EliteBook 840 G9,HP,SN-HP-67890,32GB,Intel Core i9-12th Gen,1TB SSD,Assigned,New,2027-03-15,2025-02-01
+1043,Priya Sharma,priya.sharma@scalex.com,+91-9876543211,Engineering,Quality Assurance,WS-3A-102,PHONE-001,iPhone 14 Pro,Smartphone,iPhone 14 Pro,Apple,SN-APL-55443,6GB,Apple A16 Bionic,256GB,Assigned,Good,2026-09-15,2025-02-01
+1044,Rahul Kumar,rahul.kumar@scalex.com,+91-9876543212,Engineering,DevOps,WS-3A-103,MON-002,LG 24" IPS Monitor,Monitor,24MK430H,LG,SN-LG-98765,,,,Assigned,Fair,2026-11-25,2024-11-20
+1045,Sneha Patel,sneha.patel@scalex.com,+91-9876543213,Engineering,Frontend,WS-3A-104,LAP-004,MacBook Pro 14",Laptop,MacBook Pro 14,Apple,SN-APL-33221,16GB,Apple M2 Pro,512GB SSD,Assigned,New,2028-06-30,2025-01-25
+1046,Vikram Singh,vikram.singh@scalex.com,+91-9876543214,Engineering,Backend,WS-3A-105,LAP-007,HP ZBook Studio,Laptop,ZBook Studio G9,HP,SN-HP-11235,64GB,Intel Core i9-12th Gen,2TB SSD,Assigned,New,2027-12-01,2025-02-03
+1046,Vikram Singh,vikram.singh@scalex.com,+91-9876543214,Engineering,Backend,WS-3A-105,KEY-002,Microsoft Ergonomic,Keyboard,Ergonomic Keyboard,Microsoft,SN-MSF-99887,,,,Assigned,Good,2026-07-15,2025-02-03
+1047,Anjali Desai,anjali.desai@scalex.com,+91-9876543215,HR,Talent Acquisition,WS-2B-201,MON-003,Samsung 32" Curved,Monitor,C32HG70,Samsung,SN-SAM-66778,,,,Assigned,Good,2026-10-20,2024-12-05
+1048,Rohan Mehta,rohan.mehta@scalex.com,+91-9876543216,Finance,Accounts Payable,WS-2B-202,TAB-001,iPad Pro 12.9",Tablet,iPad Pro 12.9,Apple,SN-APL-44332,8GB,Apple M2,256GB,Assigned,New,2027-04-15,2025-01-10
+1049,Kavya Reddy,kavya.reddy@scalex.com,+91-9876543217,Marketing,Digital Marketing,WS-2B-203,LAP-009,MSI Creator Z16,Laptop,Creator Z16,MSI,SN-MSI-77665,32GB,Intel Core i7-12th Gen,1TB SSD,Assigned,New,2027-11-05,2025-01-28
+1049,Kavya Reddy,kavya.reddy@scalex.com,+91-9876543217,Marketing,Digital Marketing,WS-2B-203,MON-005,ASUS ProArt 24",Monitor,ProArt PA248QV,ASUS,SN-ASU-11234,,,,Assigned,Good,2026-12-15,2025-01-28
+1050,Neha Gupta,neha.gupta@scalex.com,+91-9876543218,Engineering,Data Engineering,WS-3A-106,LAP-010,Surface Laptop 5,Laptop,Surface Laptop 5,Microsoft,SN-MSF-11998,16GB,Intel Core i7-12th Gen,512GB SSD,Assigned,New,2027-08-25,2025-01-20
+1051,Arjun Rao,arjun.rao@scalex.com,+91-9876543219,Engineering,Cloud Infrastructure,WS-3A-107,LAP-012,Dell Inspiron 15,Laptop,Inspiron 15,Dell,SN-DEL-55443,8GB,Intel Core i5-11th Gen,512GB SSD,Assigned,Good,2026-05-20,2024-09-10
+1052,Kartik Joshi,kartik.joshi@scalex.com,+91-9876543220,Sales,Enterprise Sales,WS-2B-204,LAP-013,Lenovo Legion 5,Laptop,Legion 5,Lenovo,SN-LEN-88990,16GB,AMD Ryzen 7,1TB SSD,Assigned,Good,2027-04-18,2025-01-05
+1053,Siddharth Nair,siddharth.nair@scalex.com,+91-9876543221,Engineering,Security,WS-3A-108,LAP-014,HP Omen 16,Laptop,Omen 16,HP,SN-HP-99876,32GB,Intel Core i7-12th Gen,1TB SSD,Assigned,New,2027-06-22,2025-02-15
+1054,Meera Iyer,meera.iyer@scalex.com,+91-9876543222,Product,Product Management,WS-2B-205,LAP-015,Dell Vostro 14,Laptop,Vostro 14,Dell,SN-DEL-66778,8GB,Intel Core i5-11th Gen,256GB SSD,Assigned,Good,2026-09-30,2024-10-15
+1055,Karthik Venkat,karthik.venkat@scalex.com,+91-9876543223,Engineering,Mobile Development,WS-3A-109,,,,,,,,,,,,
+1056,Divya Krishnan,divya.krishnan@scalex.com,+91-9876543224,Design,UI/UX Design,WS-2B-206,,,,,,,,,,,,
+1057,Aditya Malik,aditya.malik@scalex.com,+91-9876543225,Engineering,Machine Learning,WS-3A-110,,,,,,,,,,,,
+1058,Tanvi Shah,tanvi.shah@scalex.com,+91-9876543226,HR,Employee Relations,WS-2B-207,,,,,,,,,,,,
+1059,Nikhil Reddy,nikhil.reddy@scalex.com,+91-9876543227,Finance,Financial Planning,WS-2B-208,,,,,,,,,,,,
+1060,Pooja Agarwal,pooja.agarwal@scalex.com,+91-9876543228,Marketing,Content Marketing,WS-2B-209,,,,,,,,,,,,
+1061,Sahil Kapoor,sahil.kapoor@scalex.com,+91-9876543229,Engineering,Platform Engineering,WS-3A-111,,,,,,,,,,,,
+1062,Riya Bansal,riya.bansal@scalex.com,+91-9876543230,Sales,Inside Sales,WS-2B-210,,,,,,,,,,,,
+1063,Ishaan Bhatia,ishaan.bhatia@scalex.com,+91-9876543231,Engineering,Site Reliability,WS-3A-112,,,,,,,,,,,,
+1064,Ananya Pillai,ananya.pillai@scalex.com,+91-9876543232,Product,Product Design,WS-2B-211,,,,,,,,,,,,
+1065,Varun Saxena,varun.saxena@scalex.com,+91-9876543233,Operations,Operations Manager,WS-2B-212,,,,,,,,,,,,
+1066,Simran Kohli,simran.kohli@scalex.com,+91-9876543234,Engineering,Database Administration,WS-3A-113,,,,,,,,,,,,

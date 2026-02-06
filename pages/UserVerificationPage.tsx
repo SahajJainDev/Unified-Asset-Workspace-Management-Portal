@@ -41,6 +41,27 @@ const UserVerificationPage: React.FC = () => {
         // Fetch assets assigned to this employee's ID (empId)
         const data = await apiService.getAssetsByEmployee(userData.empId);
 
+        const inferAssetType = (asset: any): string => {
+          // If assetType is already set and not the default 'Laptop', use it
+          if (asset.assetType && asset.assetType !== 'Laptop') {
+            return asset.assetType;
+          }
+          
+          // Infer from asset name or tag
+          const name = (asset.assetName || '').toLowerCase();
+          const tag = (asset.assetTag || '').toLowerCase();
+          
+          if (name.includes('keyboard') || name.includes('keys') || tag.startsWith('key-')) return 'Keyboard';
+          if (name.includes('mouse') || name.includes('mx master') || tag.startsWith('mou-')) return 'Mouse';
+          if (name.includes('monitor') || name.includes('display') || name.includes('ultrasharp') || tag.startsWith('mon-')) return 'Monitor';
+          if (name.includes('ipad') || name.includes('tablet') || tag.startsWith('tab-')) return 'Tablet';
+          if (name.includes('iphone') || name.includes('phone') || name.includes('smartphone') || tag.startsWith('phone-')) return 'Smartphone';
+          if (name.includes('macbook') || name.includes('laptop') || name.includes('thinkpad') || name.includes('elitebook') || tag.startsWith('lap-')) return 'Laptop';
+          
+          // Default to the original assetType from DB
+          return asset.assetType || 'Laptop';
+        };
+
         const mappedAssets = data.map((a: any) => ({
           id: a._id,
           assetTag: a.assetTag,
@@ -48,7 +69,7 @@ const UserVerificationPage: React.FC = () => {
           expectedId: a.assetTag,
           enteredId: '',
           isLost: false,
-          type: a.assetType || 'Laptop'
+          type: inferAssetType(a)
         }));
         setAssets(mappedAssets);
       } catch (err: any) {
@@ -165,8 +186,13 @@ const UserVerificationPage: React.FC = () => {
                           }`}>
                           <span className="material-symbols-outlined">{
                             asset.type === 'Laptop' ? 'laptop_mac' :
-                              asset.type === 'Mouse' ? 'mouse' :
-                                asset.type === 'Charger' ? 'charging_station' : 'headphones'
+                              asset.type === 'Monitor' ? 'desktop_windows' :
+                                asset.type === 'Mouse' ? 'mouse' :
+                                  asset.type === 'Keyboard' ? 'keyboard' :
+                                    asset.type === 'Smartphone' ? 'smartphone' :
+                                      asset.type === 'Tablet' ? 'tablet' :
+                                        asset.type === 'Charger' ? 'charging_station' : 
+                                          asset.type === 'Other' ? 'devices' : 'inventory_2'
                           }</span>
                         </div>
                         <div>
