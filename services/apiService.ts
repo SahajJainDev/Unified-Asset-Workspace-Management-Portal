@@ -164,6 +164,22 @@ interface Workstation {
   updatedAt?: Date;
 }
 
+interface ChatMessage {
+  role: 'user' | 'model';
+  content: string;
+  timestamp: string;
+  intent?: any; // New field for AI actions
+}
+
+interface ChatSession {
+  _id: string;
+  userId: string;
+  title: string;
+  messages: ChatMessage[];
+  lastActivity: string;
+  createdAt: string;
+}
+
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -433,6 +449,41 @@ class ApiService {
 
   async getDeskByEmployee(employeeId: string): Promise<any> {
     return this.request<any>(`/desks/employee/${employeeId}`);
+  }
+
+  // Chat operations
+  async sendChatMessage(message: string, sessionId?: string): Promise<{ response: string, sessionId: string, history: ChatMessage[], intent?: any }> {
+    return this.request<{ response: string, sessionId: string, history: ChatMessage[], intent?: any }>('/chat/send', {
+      method: 'POST',
+      body: JSON.stringify({ message, sessionId }),
+    });
+  }
+
+  async executeAction(intent: any): Promise<any> {
+    return this.request<any>('/actions/execute', {
+      method: 'POST',
+      body: JSON.stringify(intent),
+    });
+  }
+
+  async getChatSessions(): Promise<Partial<ChatSession>[]> {
+    return this.request<Partial<ChatSession>[]>('/chat/sessions');
+  }
+
+  async getChatSessionHistory(sessionId: string): Promise<ChatSession> {
+    return this.request<ChatSession>(`/chat/sessions/${sessionId}`);
+  }
+
+  async deleteChatSession(sessionId: string): Promise<void> {
+    return this.request<void>(`/chat/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createNewChatSession(): Promise<ChatSession> {
+    return this.request<ChatSession>('/chat/new-session', {
+      method: 'POST',
+    });
   }
 }
 
