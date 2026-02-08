@@ -104,6 +104,7 @@ const UsersPage: React.FC = () => {
       fullName: formData.get('name') as string,
       email: formData.get('email') as string,
       role: formData.get('role') as UserRole,
+      userName: formData.get('userName') as string,
       isActive: true,
     };
 
@@ -172,6 +173,7 @@ const UsersPage: React.FC = () => {
                   <tr className="bg-gray-50 dark:bg-gray-800/50 text-[#617589] dark:text-gray-400 uppercase text-[11px] font-bold tracking-wider">
                     <th className="px-6 py-4">Employee ID</th>
                     <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4">User Name</th>
                     <th className="px-6 py-4">Role</th>
                     <th className="px-6 py-4">Status</th>
                     <th className="px-6 py-4 text-right">Actions</th>
@@ -195,6 +197,9 @@ const UsersPage: React.FC = () => {
                             <p className="text-[10px] text-slate-400 font-bold">{user.email || 'No Email'}</p>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        {user.userName || '-'}
                       </td>
                       <td className="px-6 py-4">
                         <select

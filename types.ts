@@ -94,6 +94,7 @@ export interface Employee {
   _id?: string;
   empId: string;
   fullName: string;
+  userName?: string;
   email?: string;
   department?: string;
   role?: UserRole;

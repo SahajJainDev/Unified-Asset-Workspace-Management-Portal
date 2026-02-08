@@ -78,16 +78,13 @@ const AssetDetailPage: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/employees');
+      // Fetch with a large limit to get all employees for the assign modal
+      const res = await fetch('http://localhost:5000/api/employees?limit=1000');
       if (res.ok) {
-        const data = await res.json();
-        // Ensure data is an array
-        if (Array.isArray(data)) {
-          setEmployees(data);
-        } else {
-          console.error('Employee data is not an array:', data);
-          setEmployees([]);
-        }
+        const json = await res.json();
+        // Backend returns { data: [...], total, pages, limit }
+        const list = Array.isArray(json) ? json : (json.data || []);
+        setEmployees(list);
       } else {
         console.error('Failed to fetch employees');
         setEmployees([]);
@@ -122,15 +119,17 @@ const AssetDetailPage: React.FC = () => {
     }
 
     try {
+      // Build a clean payload — avoid sending _id, __v, createdAt, updatedAt
+      const { _id, __v, createdAt, updatedAt, ...cleanAsset } = asset;
       const updatedAsset = {
-        ...asset,
+        ...cleanAsset,
         status: 'Assigned',
-        assignedTo: selectedEmployee.empId, // Store employee ID in assignedTo field
+        assignedTo: selectedEmployee.empId,
         employee: {
           number: selectedEmployee.empId,
           name: selectedEmployee.fullName,
-          department: selectedEmployee.department,
-          subDepartment: selectedEmployee.subDepartment
+          department: selectedEmployee.department || '',
+          subDepartment: selectedEmployee.subDepartment || ''
         },
         assignmentDate: new Date().toISOString()
       };
@@ -348,7 +347,16 @@ const AssetDetailPage: React.FC = () => {
                 <div className="flex flex-col justify-center">
                   <div className="flex items-center gap-3 mb-1">
                     <h1 className="text-[#111418] dark:text-white text-2xl font-bold leading-tight">{asset.assetName} - {asset.assetTag}</h1>
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-primary text-xs font-bold uppercase tracking-wider">{asset.status}</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      asset.status === 'Assigned' ? 'bg-purple-100 text-purple-700' :
+                      asset.status === 'Available' ? 'bg-emerald-100 text-emerald-700' :
+                      asset.status === 'IN USE' ? 'bg-green-100 text-green-700' :
+                      asset.status === 'STORAGE' ? 'bg-slate-100 text-slate-600' :
+                      asset.status === 'REPAIR' ? 'bg-amber-100 text-amber-700' :
+                      asset.status === 'Damaged' ? 'bg-red-100 text-red-700' :
+                      asset.status === 'Not Available' ? 'bg-rose-100 text-rose-600' :
+                      'bg-blue-100 text-primary'
+                    }`}>{asset.status}</span>
                   </div>
                   <p className="text-[#617589] text-base font-normal">
                     Assigned to <span className="text-[#111418] dark:text-white font-medium">{asset.employee?.name || 'Unassigned'}</span>

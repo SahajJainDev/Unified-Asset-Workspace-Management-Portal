@@ -213,8 +213,8 @@ const FloorMapPage: React.FC = () => {
 
                             <label className="flex items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2 shadow-md hover:bg-primary/90 transition-all cursor-pointer">
                                 <span className="material-symbols-outlined">upload_file</span>
-                                <span>{uploading ? 'Uploading...' : 'Upload Excel'}</span>
-                                <input type="file" accept=".xlsx" className="hidden" onChange={handleFileUpload} disabled={uploading}/>
+                                <span>{uploading ? 'Uploading...' : 'Upload File'}</span>
+                                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileUpload} disabled={uploading}/>
                             </label>
                         </div>
                     </div>
@@ -225,7 +225,7 @@ const FloorMapPage: React.FC = () => {
                         <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 dark:bg-gray-800/50">
                             <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">map</span>
                             <p className="text-gray-500 font-medium">No floor map data found.</p>
-                            <p className="text-xs text-gray-400 mt-1">Upload an Excel file to get started.</p>
+                            <p className="text-xs text-gray-400 mt-1">Upload a CSV or Excel file to get started.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -304,14 +304,18 @@ const FloorMapPage: React.FC = () => {
                             </div>
                             
                             <div className="p-6 overflow-y-auto">
-                                <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div className="grid grid-cols-4 gap-4 mb-6">
                                     <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-center">
                                         <p className="text-xs text-gray-500 uppercase font-bold mb-1">Total Rows</p>
                                         <p className="text-2xl font-black text-gray-800 dark:text-white">{uploadResult.summary.total}</p>
                                     </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-center">
+                                        <p className="text-xs text-blue-600 dark:text-blue-400 uppercase font-bold mb-1">Desks</p>
+                                        <p className="text-2xl font-black text-blue-600 dark:text-blue-400">{uploadResult.summary.desks || uploadResult.summary.upserted || 0}</p>
+                                    </div>
                                     <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl text-center">
-                                        <p className="text-xs text-green-600 dark:text-green-400 uppercase font-bold mb-1">Success</p>
-                                        <p className="text-2xl font-black text-green-600 dark:text-green-400">{uploadResult.summary.upserted}</p>
+                                        <p className="text-xs text-green-600 dark:text-green-400 uppercase font-bold mb-1">Assets</p>
+                                        <p className="text-2xl font-black text-green-600 dark:text-green-400">{uploadResult.summary.assets || 0}</p>
                                     </div>
                                     <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl text-center">
                                         <p className="text-xs text-red-600 dark:text-red-400 uppercase font-bold mb-1">Failed</p>

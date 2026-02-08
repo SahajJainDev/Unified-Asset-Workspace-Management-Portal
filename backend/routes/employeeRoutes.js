@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Employee = require("../models/Employee");
+const Asset = require("../models/Asset");
 const multer = require('multer');
 const xlsx = require('xlsx');
 const fs = require('fs');
@@ -111,6 +112,11 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
           workstationId: workstationId && !isEmptyValue(workstationId) ? String(workstationId).trim() : ''
         };
 
+        // Generate userName from fullName (Space to Dot)
+        if (employeeData.fullName) {
+          employeeData.userName = employeeData.fullName.replace(/\s+/g, '.');
+        }
+
         // Upsert Employee
         await Employee.findOneAndUpdate(
           { empId: String(empId).trim() },
@@ -208,7 +214,8 @@ router.post("/", async (req, res) => {
       role: req.body.role || 'Employee',
       isActive: req.body.isActive !== undefined ? req.body.isActive : true,
       email: req.body.email || '',
-      department: req.body.department || ''
+      department: req.body.department || '',
+      userName: req.body.userName ? String(req.body.userName).trim() : String(fullName).trim().replace(/\s+/g, '.')
     });
 
     await employee.save();
@@ -250,6 +257,11 @@ router.get("/:id", async (req, res) => {
 // UPDATE Employee
 router.patch("/:id", async (req, res) => {
   try {
+    // If fullName is being updated, regenerate userName (unless userName is being explicitly updated or already exists in body)
+    if (req.body.fullName && !req.body.userName) {
+      req.body.userName = String(req.body.fullName).trim().replace(/\s+/g, '.');
+    }
+
     let query = {};
     const { ObjectId } = require('mongoose').Types;
 
@@ -290,6 +302,144 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Employee deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete employee" });
+  }
+});
+
+// GET assets assigned to an employee
+router.get("/:id/assets", async (req, res) => {
+  try {
+    const { ObjectId } = require('mongoose').Types;
+    let employee;
+
+    if (ObjectId.isValid(req.params.id)) {
+      employee = await Employee.findById(req.params.id);
+    }
+    if (!employee) {
+      employee = await Employee.findOne({ empId: req.params.id });
+    }
+    if (!employee) return res.status(404).json({ message: "Employee not found" });
+
+    // Find assets assigned to this employee by empId or employee.number
+    const assets = await Asset.find({
+      $or: [
+        { 'employee.number': employee.empId },
+        { assignedTo: employee.empId },
+        { assignedTo: employee.fullName }
+      ]
+    });
+
+    res.json(assets);
+  } catch (error) {
+    console.error("Failed to fetch employee assets:", error);
+    res.status(500).json({ message: "Failed to fetch employee assets" });
+  }
+});
+
+// GET available assets for allocation (unassigned, grouped by type)
+router.get("/:id/available-assets", async (req, res) => {
+  try {
+    // Find assets that are available for allocation
+    // Must have status Available or STORAGE AND no employee assigned
+    const assets = await Asset.find({
+      status: { $in: ['Available', 'STORAGE'] },
+      $and: [
+        { $or: [
+          { 'employee.number': { $exists: false } },
+          { 'employee.number': null },
+          { 'employee.number': '' }
+        ]},
+        { $or: [
+          { assignedTo: { $exists: false } },
+          { assignedTo: null },
+          { assignedTo: '' }
+        ]}
+      ]
+    }).sort({ assetType: 1, assetName: 1 });
+
+    res.json(assets);
+  } catch (error) {
+    console.error("Failed to fetch available assets:", error);
+    res.status(500).json({ message: "Failed to fetch available assets" });
+  }
+});
+
+// POST assign assets to an employee
+router.post("/:id/assign-asset", async (req, res) => {
+  try {
+    const { assetIds } = req.body; // array of asset _ids
+    if (!assetIds || !Array.isArray(assetIds) || assetIds.length === 0) {
+      return res.status(400).json({ message: "assetIds array is required" });
+    }
+
+    const { ObjectId } = require('mongoose').Types;
+    let employee;
+
+    if (ObjectId.isValid(req.params.id)) {
+      employee = await Employee.findById(req.params.id);
+    }
+    if (!employee) {
+      employee = await Employee.findOne({ empId: req.params.id });
+    }
+    if (!employee) return res.status(404).json({ message: "Employee not found" });
+
+    const results = { assigned: 0, errors: [] };
+
+    for (const assetId of assetIds) {
+      try {
+        const update = {
+          status: 'Assigned',
+          assignedTo: employee.empId,
+          assignmentDate: new Date(),
+          employee: {
+            number: employee.empId,
+            name: employee.fullName,
+            department: employee.department || '',
+            subDepartment: employee.subDepartment || ''
+          }
+        };
+
+        const asset = await Asset.findByIdAndUpdate(assetId, update, { new: true });
+        if (!asset) {
+          results.errors.push({ assetId, message: 'Asset not found' });
+        } else {
+          results.assigned++;
+        }
+      } catch (err) {
+        results.errors.push({ assetId, message: err.message });
+      }
+    }
+
+    res.json({
+      message: `${results.assigned} asset(s) assigned to ${employee.fullName}`,
+      summary: results
+    });
+  } catch (error) {
+    console.error("Failed to assign assets:", error);
+    res.status(500).json({ message: "Failed to assign assets" });
+  }
+});
+
+// POST unassign asset from an employee
+router.post("/:id/unassign-asset", async (req, res) => {
+  try {
+    const { assetId } = req.body;
+    if (!assetId) {
+      return res.status(400).json({ message: "assetId is required" });
+    }
+
+    const asset = await Asset.findByIdAndUpdate(assetId, {
+      status: 'Available',
+      assignedTo: '',
+      assignmentDate: null,
+      employee: { number: '', name: '', department: '', subDepartment: '' }
+    }, { new: true });
+
+    if (!asset) return res.status(404).json({ message: "Asset not found" });
+
+    res.json({ message: `Asset ${asset.assetName} unassigned successfully`, asset });
+  } catch (error) {
+    console.error("Failed to unassign asset:", error);
+    res.status(500).json({ message: "Failed to unassign asset" });
   }
 });
 

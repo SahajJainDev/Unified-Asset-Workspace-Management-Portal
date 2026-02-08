@@ -29,7 +29,6 @@ const InstalledSoftwareSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['UserRegistry', 'WMI', 'PackageManager'],
     default: 'UserRegistry'
   }
 }, {
@@ -51,13 +50,20 @@ const SoftwareVerificationSchema = new mongoose.Schema({
     computerName: String,
     userName: String,
     domain: String,
+    ipAddress: String,
     osVersion: String,
+    osBuildNumber: String,
     osArchitecture: String,
     serialNumber: String,
     manufacturer: String,
     model: String,
     totalRAM: Number,
     processor: String,
+    adminRights: String,
+    encryptionStatus: String,
+    vpnSoftware: String,
+    antivirus: String,
+    usbStorageAccess: String,
     scanDate: Date
   },
   scannedAt: {

@@ -12,6 +12,11 @@ const employeeSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  userName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   email: {
     type: String,
     trim: true,
