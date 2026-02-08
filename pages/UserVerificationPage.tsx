@@ -148,15 +148,6 @@ const UserVerificationPage: React.FC = () => {
               <h1 className="text-4xl font-black tracking-tight">Verify Your Assets</h1>
               <p className="text-[#617589] mt-1">Quarterly hardware compliance check for {user?.department || 'your department'}.</p>
             </div>
-            <div className="bg-white dark:bg-[#1a2632] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center gap-3">
-              <div className="size-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary text-sm">badge</span>
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-[#617589] uppercase tracking-tighter">Employee ID</p>
-                <p className="text-sm font-bold">{user?.empId || '---'}</p>
-              </div>
-            </div>
           </div>
 
           {loading ? (
@@ -213,15 +204,15 @@ const UserVerificationPage: React.FC = () => {
                     {!asset.isLost && (
                       <div className="space-y-3">
                         <div className="flex justify-between items-center px-1">
-                          <label className="text-[10px] font-black text-[#617589] uppercase tracking-widest">Verify Asset ID</label>
-                          <span className="text-[10px] font-bold text-primary font-mono opacity-60">Hint: {asset.expectedId}</span>
+                          <label className="text-[10px] font-black text-[#617589] uppercase tracking-widest">Verify Your Asset ID</label>
+                          <span className="text-[10px] font-bold text-primary font-mono opacity-60">Hint: PTU1DELL0111</span>
                         </div>
                         <div className="relative">
                           <input
                             type="text"
                             value={asset.enteredId}
                             onChange={(e) => handleIdChange(asset.id, e.target.value.toUpperCase())}
-                            placeholder="Enter ID printed on tag..."
+                            placeholder="Enter ID printed on Asset..."
                             className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                           />
                           {asset.enteredId === asset.expectedId && (
