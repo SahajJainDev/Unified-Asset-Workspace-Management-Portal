@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Header: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
@@ -8,6 +9,7 @@ const Header: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin, logout } = useAuth();
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const isUserPath = location.pathname.startsWith('/user');
@@ -32,7 +34,7 @@ const Header: React.FC = () => {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('currentUser');
+    logout();
     navigate('/login');
   };
 

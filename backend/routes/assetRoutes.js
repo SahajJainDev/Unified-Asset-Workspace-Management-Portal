@@ -6,6 +6,9 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
+const { logAssetEvent } = require("../services/historyService");
+const AssetHistory = require("../models/AssetHistory");
+const { logActivity } = require('../utils/activityLogger');
 
 // Configure Multer
 const storage = multer.diskStorage({
@@ -122,13 +125,26 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
         const existingAsset = await Asset.findOne({ assetTag: mappedAsset.assetTag });
         if (existingAsset) {
           // Update existing asset
-          await Asset.findByIdAndUpdate(existingAsset._id, mappedAsset, { new: true });
+          const updated = await Asset.findByIdAndUpdate(existingAsset._id, mappedAsset, { new: true });
           results.insertedCount++; // Still count as processed
+
+          // Log history for bulk update
+          await logAssetEvent(existingAsset._id, 'UPDATED', {
+            via: 'Bulk Upload',
+            message: 'Asset details updated via bulk import'
+          }, 'System');
         } else {
           // Create new asset
           const newAsset = new Asset(mappedAsset);
           await newAsset.save();
           results.insertedCount++;
+
+          // Log history
+          await logAssetEvent(newAsset._id, 'CREATED', {
+            name: newAsset.assetName,
+            tag: newAsset.assetTag,
+            via: 'Bulk Upload'
+          }, 'System');
         }
 
       } catch (error) {
@@ -146,13 +162,13 @@ router.post("/bulk-upload", upload.single('file'), async (req, res) => {
 
     // Activity Log
     if (results.insertedCount > 0) {
-        await logActivity(
-            'Assets Imported',
-            `Bulk upload added ${results.insertedCount} new assets`,
-            'cloud_upload',
-            'bg-indigo-50 text-indigo-600',
-            'asset'
-        );
+      await logActivity(
+        'Assets Imported',
+        `Bulk upload added ${results.insertedCount} new assets`,
+        'cloud_upload',
+        'bg-indigo-50 text-indigo-600',
+        'asset'
+      );
     }
 
     res.json({
@@ -180,16 +196,24 @@ router.post("/", validateAssetData, async (req, res) => {
   try {
     const asset = new Asset(req.body);
     const savedAsset = await asset.save();
-    
+
     // Log Creation
     const actor = req.body.addedBy || 'System';
 
     await logActivity(
-        'New Asset Added',
-        `${actor} added ${savedAsset.assetName} (${savedAsset.assetTag}) to inventory`,
-        'add_circle',
-        'bg-green-50 text-green-600',
-        'asset'
+      'New Asset Added',
+      `${actor} added ${savedAsset.assetName} (${savedAsset.assetTag}) to inventory`,
+      'add_circle',
+      'bg-green-50 text-green-600',
+      'asset'
+    );
+
+    // Log Lifecycle Event
+    await logAssetEvent(
+      savedAsset._id,
+      'CREATED',
+      { name: savedAsset.assetName, tag: savedAsset.assetTag },
+      actor
     );
 
     res.status(201).json(savedAsset);
@@ -323,33 +347,70 @@ router.put("/:id", validateAssetData, async (req, res) => {
     const actor = req.body.modifiedBy || req.body.addedBy || 'Admin';
 
     if (originalAsset) {
-        // Check if assignedTo changed
-        if (updatedAsset.status === 'Assigned' && originalAsset.status !== 'Assigned') {
-             const assignee = updatedAsset.employee?.name || updatedAsset.assignedTo || 'Employee';
-             await logActivity(
-                'Asset Assigned',
-                `${actor} assigned ${updatedAsset.assetName} ${updatedAsset.assetTag} to ${assignee}`,
-                'assignment_ind',
-                'bg-blue-50 text-blue-600',
-                'asset'
-            );
-        } else if (updatedAsset.status === 'Available' && originalAsset.status === 'Assigned') {
-            await logActivity(
-                'Asset Returned',
-                `${updatedAsset.assetName} ${updatedAsset.assetTag} returned to inventory by ${actor}`,
-                'assignment_return',
-                'bg-gray-50 text-gray-600',
-                'asset'
-            );
-        } else if (updatedAsset.status === 'REPAIR' && originalAsset.status !== 'REPAIR') {
-             await logActivity(
-                'Asset Repair',
-                `${updatedAsset.assetName} ${updatedAsset.assetTag} sent for repair by ${actor}`,
-                'build',
-                'bg-orange-50 text-orange-600',
-                'maintenance'
-            );
+      // Detect Field Changes
+      const changes = {};
+      const fieldsToTrack = ['assetName', 'status', 'condition', 'description', 'model', 'make'];
+      fieldsToTrack.forEach(field => {
+        const newValue = req.body[field];
+        const oldValue = originalAsset[field];
+        if (newValue !== undefined && String(newValue) !== String(oldValue)) {
+          changes[field] = { old: oldValue, new: newValue };
         }
+      });
+
+      // Track Employee Changes
+      if (req.body.employee) {
+        ['number', 'name', 'department'].forEach(field => {
+          const newValue = req.body.employee[field];
+          const oldValue = originalAsset.employee ? originalAsset.employee[field] : undefined;
+          if (newValue !== undefined && String(newValue) !== String(oldValue)) {
+            changes[`employee.${field}`] = { old: oldValue, new: newValue };
+          }
+        });
+      }
+
+      if (Object.keys(changes).length > 0) {
+        await logAssetEvent(updatedAsset._id, 'UPDATED', { changes }, actor);
+      }
+
+      // Lifecycle Transitions
+      const isNowAssigned = updatedAsset.status === 'Assigned' || (updatedAsset.employee && updatedAsset.employee.number);
+      const wasAssigned = originalAsset.status === 'Assigned' || (originalAsset.employee && originalAsset.employee.number);
+
+      if (isNowAssigned && !wasAssigned) {
+        const assignee = updatedAsset.employee?.name || updatedAsset.assignedTo || 'Employee';
+        await logAssetEvent(updatedAsset._id, 'ASSIGNED', { to: assignee, employeeNumber: updatedAsset.employee?.number }, actor);
+      } else if (!isNowAssigned && wasAssigned) {
+        const releasedFrom = originalAsset.employee?.name || 'Employee';
+        await logAssetEvent(updatedAsset._id, 'RELEASED', { from: releasedFrom }, actor);
+      } else if (isNowAssigned && wasAssigned && updatedAsset.employee?.number !== originalAsset.employee?.number) {
+        await logAssetEvent(updatedAsset._id, 'REASSIGNED', {
+          from: originalAsset.employee?.name,
+          to: updatedAsset.employee?.name,
+          fromNumber: originalAsset.employee?.number,
+          toNumber: updatedAsset.employee?.number
+        }, actor);
+      }
+
+      // Log to Global Activity Feed (Legacy Support)
+      if (updatedAsset.status === 'Assigned' && originalAsset.status !== 'Assigned') {
+        const assignee = updatedAsset.employee?.name || updatedAsset.assignedTo || 'Employee';
+        await logActivity(
+          'Asset Assigned',
+          `${actor} assigned ${updatedAsset.assetName} ${updatedAsset.assetTag} to ${assignee}`,
+          'assignment_ind',
+          'bg-blue-50 text-blue-600',
+          'asset'
+        );
+      } else if (updatedAsset.status === 'Available' && originalAsset.status === 'Assigned') {
+        await logActivity(
+          'Asset Returned',
+          `${updatedAsset.assetName} ${updatedAsset.assetTag} returned to inventory by ${actor}`,
+          'assignment_return',
+          'bg-gray-50 text-gray-600',
+          'asset'
+        );
+      }
     }
 
     res.json(updatedAsset);
@@ -406,6 +467,45 @@ router.delete("/all-assets", async (req, res) => {
   }
 });
 
+// GET Asset History
+router.get("/:id/history", async (req, res) => {
+  try {
+    const { ObjectId } = require('mongoose').Types;
+    let query = {};
+    const idParam = req.params.id;
+
+    if (ObjectId.isValid(idParam)) {
+      query = { _id: idParam };
+    } else {
+      query = { assetTag: idParam };
+    }
+
+    const asset = await Asset.findOne(query);
+    if (!asset) {
+      // If we can't find the asset, at least try a literal search on history just in case
+      const history = await AssetHistory.find({ assetId: idParam })
+        .sort({ performedAt: -1 })
+        .limit(50);
+      return res.json(history);
+    }
+
+    // Modern approach: Search history using the canonical _id and the assetTag
+    const history = await AssetHistory.find({
+      $or: [
+        { assetId: asset._id.toString() },
+        { assetId: asset.assetTag }
+      ]
+    })
+      .sort({ performedAt: -1 })
+      .limit(100);
+
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching asset history:', error);
+    res.status(500).json({ message: 'Failed to fetch asset history' });
+  }
+});
+
 // DELETE Asset
 router.delete("/:id", async (req, res) => {
   try {
@@ -424,11 +524,11 @@ router.delete("/:id", async (req, res) => {
 
     // Log Deletion
     await logActivity(
-        'Asset Deleted',
-        `${deletedAsset.assetName} (${deletedAsset.assetTag}) removed from system`,
-        'delete',
-        'bg-red-50 text-red-600',
-        'asset'
+      'Asset Deleted',
+      `${deletedAsset.assetName} (${deletedAsset.assetTag}) removed from system`,
+      'delete',
+      'bg-red-50 text-red-600',
+      'asset'
     );
 
     res.json({ message: "Asset deleted successfully" });

@@ -4,22 +4,22 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import AIChatBot from '../components/AIChatBot';
-import { QuikrLog } from '../types';
+import { QuixrLog } from '../types';
 
-export const QUIKR_LOGS_DATA: QuikrLog[] = [
-  { id: 'LOG-001', assetId: 'AST-9042', modification: 'Battery health updated to 94% via auto-scan', modifiedBy: 'Quikr Agent v2.4', timestamp: '2024-03-20 09:15 AM' },
-  { id: 'LOG-002', assetId: 'AST-8821', modification: 'New software detected: VS Code v1.86.1', modifiedBy: 'Quikr Agent v2.4', timestamp: '2024-03-19 04:30 PM' },
-  { id: 'LOG-003', assetId: 'AST-9105', modification: 'Security patch compliance status: Secured', modifiedBy: 'Quikr Agent v2.4', timestamp: '2024-03-19 11:20 AM' },
-  { id: 'LOG-004', assetId: 'AST-8742', modification: 'Peripheral connectivity check: PASS', modifiedBy: 'Quikr Agent v2.4', timestamp: '2024-03-18 02:00 PM' },
-  { id: 'LOG-005', assetId: 'AST-9210', modification: 'Firmware update v1.0.4 applied successfully', modifiedBy: 'Quikr Agent v2.4', timestamp: '2024-03-18 08:45 AM' },
+export const Quixr_LOGS_DATA: QuixrLog[] = [
+  { id: 'LOG-001', assetId: 'AST-9042', modification: 'Battery health updated to 94% via auto-scan', modifiedBy: 'Quixr Agent v2.4', timestamp: '2024-03-20 09:15 AM' },
+  { id: 'LOG-002', assetId: 'AST-8821', modification: 'New software detected: VS Code v1.86.1', modifiedBy: 'Quixr Agent v2.4', timestamp: '2024-03-19 04:30 PM' },
+  { id: 'LOG-003', assetId: 'AST-9105', modification: 'Security patch compliance status: Secured', modifiedBy: 'Quixr Agent v2.4', timestamp: '2024-03-19 11:20 AM' },
+  { id: 'LOG-004', assetId: 'AST-8742', modification: 'Peripheral connectivity check: PASS', modifiedBy: 'Quixr Agent v2.4', timestamp: '2024-03-18 02:00 PM' },
+  { id: 'LOG-005', assetId: 'AST-9210', modification: 'Firmware update v1.0.4 applied successfully', modifiedBy: 'Quixr Agent v2.4', timestamp: '2024-03-18 08:45 AM' },
 ];
 
-const QuikrLogsPage: React.FC = () => {
+const QuixrLogsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredLogs = useMemo(() => {
-    return QUIKR_LOGS_DATA.filter(log => 
+    return Quixr_LOGS_DATA.filter(log =>
       log.assetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.modification.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -27,7 +27,7 @@ const QuikrLogsPage: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
-      <Sidebar activeTab="quikr-logs" />
+      <Sidebar activeTab="Quixr-logs" />
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
         <div className="max-w-[1200px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -35,7 +35,7 @@ const QuikrLogsPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <span className="material-symbols-outlined text-primary text-3xl font-black">bolt</span>
-                <h2 className="text-[#111418] dark:text-white text-3xl font-black tracking-tight leading-tight">Quikr Logs</h2>
+                <h2 className="text-[#111418] dark:text-white text-3xl font-black tracking-tight leading-tight">Quixr Logs</h2>
               </div>
               <p className="text-[#617589] dark:text-gray-400 text-sm">Automated system modifications and audit trail</p>
             </div>
@@ -47,15 +47,15 @@ const QuikrLogsPage: React.FC = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#617589]">
                   <span className="material-symbols-outlined">search</span>
                 </div>
-                <input 
-                  className="w-full pl-10 pr-4 py-2 bg-[#f0f2f4] dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50 transition-all" 
+                <input
+                  className="w-full pl-10 pr-4 py-2 bg-[#f0f2f4] dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50 transition-all"
                   placeholder="Search Asset ID or modification..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -68,8 +68,8 @@ const QuikrLogsPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#dbe0e6] dark:divide-gray-800">
                   {filteredLogs.map((log, i) => (
-                    <tr 
-                      key={i} 
+                    <tr
+                      key={i}
                       className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer"
                       onClick={() => navigate(`/assets/${log.assetId}`)}
                     >
@@ -101,4 +101,4 @@ const QuikrLogsPage: React.FC = () => {
   );
 };
 
-export default QuikrLogsPage;
+export default QuixrLogsPage;

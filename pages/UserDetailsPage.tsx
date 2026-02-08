@@ -174,13 +174,21 @@ const UserDetailsPage: React.FC = () => {
     const handleStatusChange = async () => {
         if (!user?._id) return;
         try {
+            const nextStatus = user.status === 'Active' ? 'Inactive' : 'Active';
             const res = await fetch(`http://localhost:5000/api/employees/${user._id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isActive: !user.isActive })
+                body: JSON.stringify({
+                    status: nextStatus,
+                    isActive: nextStatus === 'Active'
+                })
             });
             if (res.ok) {
-                setUser(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
+                setUser(prev => prev ? {
+                    ...prev,
+                    status: nextStatus,
+                    isActive: nextStatus === 'Active'
+                } : null);
             }
         } catch (error) {
             console.error(error);
@@ -304,9 +312,9 @@ const UserDetailsPage: React.FC = () => {
                                                 <p className="text-xs font-bold text-gray-400 uppercase mb-1">Status</p>
                                                 <button
                                                     onClick={handleStatusChange}
-                                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block cursor-pointer hover:opacity-80 transition-opacity ${user.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block cursor-pointer hover:opacity-80 transition-opacity ${user.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                                                         }`}>
-                                                    {user.isActive ? 'Active' : 'Disabled'}
+                                                    {user.status || 'Active'}
                                                 </button>
                                             </div>
                                         </div>

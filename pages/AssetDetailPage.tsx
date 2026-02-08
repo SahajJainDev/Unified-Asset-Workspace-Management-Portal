@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import AIChatBot from '../components/AIChatBot';
+import apiService from '../services/apiService';
 
 const AssetDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,10 +20,13 @@ const AssetDetailPage: React.FC = () => {
   const [employees, setEmployees] = React.useState<any[]>([]);
   const [searchEmployee, setSearchEmployee] = React.useState('');
   const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null);
+  const [history, setHistory] = React.useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
 
   React.useEffect(() => {
     fetchAsset();
     fetchInstalledSoftware();
+    fetchHistory();
   }, [id]);
 
   React.useEffect(() => {
@@ -37,8 +41,8 @@ const AssetDetailPage: React.FC = () => {
       // For now, let's try assuming the ID in URL is the DB ID.
       // If the URL passes 'Asset-042' which is not a MongoID, this might fail unless backend handles lookup by tag.
       // The previous code had `id || 'Asset-042'`, implying id might be undefined or just a placeholder.
-      if (!id) return; 
-      
+      if (!id) return;
+
       const res = await fetch(`http://localhost:5000/api/assets/${id}`);
       if (res.ok) {
         const data = await res.json();
@@ -91,6 +95,23 @@ const AssetDetailPage: React.FC = () => {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      if (!id) return;
+      setHistoryLoading(true);
+      // We pass the same id (which could be _id or Tag) - backend handles both or we can use asset?._id once asset is loaded
+      // To be safe, let's wait for asset to load if we need _id, 
+      // but the route /api/assets/:id/history expects assetId which is currently implemented to take whatever is in :id.
+      // Let's refine fetchHistory to be called after fetchAsset or just use the id from params.
+      const data = await apiService.getAssetHistory(id);
+      setHistory(data);
+    } catch (err) {
+      console.error('Error fetching history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const handleAssignAsset = async () => {
     if (!selectedEmployee) {
       alert('Please select an employee');
@@ -126,6 +147,7 @@ const AssetDetailPage: React.FC = () => {
         setIsAssignModalOpen(false);
         setSelectedEmployee(null);
         setSearchEmployee('');
+        fetchHistory(); // Re-fetch history to show the new assignment
         alert('Asset assigned successfully!');
       } else {
         alert('Failed to assign asset');
@@ -136,7 +158,7 @@ const AssetDetailPage: React.FC = () => {
     }
   };
 
-  const filteredEmployees = Array.isArray(employees) ? employees.filter(emp => 
+  const filteredEmployees = Array.isArray(employees) ? employees.filter(emp =>
     emp.fullName?.toLowerCase().includes(searchEmployee.toLowerCase()) ||
     emp.empId?.toString().includes(searchEmployee) ||
     emp.department?.toLowerCase().includes(searchEmployee.toLowerCase())
@@ -146,46 +168,47 @@ const AssetDetailPage: React.FC = () => {
     const { name, value } = e.target;
     // Handle nested employee fields
     if (name.startsWith('employee.')) {
-        const field = name.split('.')[1];
-        setFormData((prev: any) => {
-            const updatedEmployee = { ...prev.employee, [field]: value };
-            // Auto-update status to Assigned if employee number is provided
-            const shouldAutoAssign = field === 'number' && value && value.trim() !== '';
-            return {
-                ...prev,
-                employee: updatedEmployee,
-                status: shouldAutoAssign ? 'Assigned' : prev.status
-            };
-        });
+      const field = name.split('.')[1];
+      setFormData((prev: any) => {
+        const updatedEmployee = { ...prev.employee, [field]: value };
+        // Auto-update status to Assigned if employee number is provided
+        const shouldAutoAssign = field === 'number' && value && value.trim() !== '';
+        return {
+          ...prev,
+          employee: updatedEmployee,
+          status: shouldAutoAssign ? 'Assigned' : prev.status
+        };
+      });
     } else if (name.startsWith('specs.')) {
-        const field = name.split('.')[1];
-        setFormData((prev: any) => ({
-            ...prev,
-            specs: { ...prev.specs, [field]: value }
-        }));
+      const field = name.split('.')[1];
+      setFormData((prev: any) => ({
+        ...prev,
+        specs: { ...prev.specs, [field]: value }
+      }));
     } else {
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+      setFormData((prev: any) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleSave = async () => {
     try {
-        const res = await fetch(`http://localhost:5000/api/assets/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
-        if (res.ok) {
-            const updated = await res.json();
-            setAsset(updated);
-            setIsEditing(false);
-            // Optional: show toast
-        } else {
-            alert('Failed to save changes');
-        }
+      const res = await fetch(`http://localhost:5000/api/assets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAsset(updated);
+        setIsEditing(false);
+        fetchHistory(); // Re-fetch history to show the modifications
+        // Optional: show toast
+      } else {
+        alert('Failed to save changes');
+      }
     } catch (error) {
-        console.error('Error saving:', error);
-        alert('Error saving changes');
+      console.error('Error saving:', error);
+      alert('Error saving changes');
     }
   };
 
@@ -207,13 +230,97 @@ const AssetDetailPage: React.FC = () => {
   const handleFirstPage = () => setCurrentPage(1);
   const handleLastPage = () => setCurrentPage(totalPages);
 
-  // Integrated history items
-  const historyItems = [
-    { date: 'Mar 20, 2024', event: 'Quikr Modification', desc: 'Battery health reported as 94% via Quikr auto-scan.', icon: 'bolt', color: 'bg-primary/10 text-primary' },
-    { date: 'Oct 12, 2023', event: 'Asset Assigned', desc: 'Assigned to Sarah Jenkins for Product Design role.', icon: 'person_add', color: 'bg-blue-100 text-blue-600' },
-     // using asset data creation if available
-    { date: asset?.createdAt ? new Date(asset.createdAt).toLocaleDateString() : 'Sep 25, 2023', event: 'Purchased', desc: 'Added to system.', icon: 'shopping_cart', color: 'bg-gray-100 text-gray-600' },
-  ];
+  // Dynamic history items mapping
+  const historyItems = React.useMemo(() => {
+    if (history.length === 0) {
+      // Fallback to basic info if no history yet
+      return [
+        {
+          date: asset?.createdAt ? new Date(asset.createdAt).toLocaleDateString() : 'N/A',
+          event: 'Asset Created',
+          desc: 'Asset added to system.',
+          icon: 'add_circle',
+          color: 'bg-green-100 text-green-600'
+        }
+      ];
+    }
+
+    return history.map(item => {
+      const performedBy = item.performedBy || 'System';
+      const date = new Date(item.performedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      switch (item.eventType) {
+        case 'CREATED':
+          return {
+            date,
+            event: 'Asset Created',
+            desc: `Asset added to inventory by ${performedBy}.`,
+            icon: 'add_circle',
+            color: 'bg-green-100 text-green-600'
+          };
+        case 'ASSIGNED':
+          return {
+            date,
+            event: 'Asset Assigned',
+            desc: `Assigned to ${item.eventDetails?.to || 'Employee'} by ${performedBy}.`,
+            icon: 'person_add',
+            color: 'bg-blue-100 text-blue-600'
+          };
+        case 'RELEASED':
+          return {
+            date,
+            event: 'Asset Released',
+            desc: `Released from ${item.eventDetails?.from || 'Employee'} by ${performedBy}.`,
+            icon: 'assignment_return',
+            color: 'bg-gray-100 text-gray-600'
+          };
+        case 'REASSIGNED':
+          return {
+            date,
+            event: 'Asset Reassigned',
+            desc: `Reassigned from ${item.eventDetails?.from} to ${item.eventDetails?.to} by ${performedBy}.`,
+            icon: 'published_with_changes',
+            color: 'bg-purple-100 text-purple-600'
+          };
+        case 'UPDATED':
+          let updateDesc = `Modified by ${performedBy}.`;
+          if (item.eventDetails?.changes) {
+            const changes = Object.entries(item.eventDetails.changes)
+              .map(([key, val]: [string, any]) => {
+                const fieldName = key.includes('.') ? key.split('.').pop() : key;
+                return `${fieldName}: ${val.old || 'N/A'} → ${val.new}`;
+              })
+              .join(', ');
+            updateDesc = `Changed ${changes} by ${performedBy}.`;
+          } else if (item.eventDetails?.message) {
+            updateDesc = `${item.eventDetails.message} by ${performedBy}.`;
+          }
+          return {
+            date,
+            event: 'Asset Updated',
+            desc: updateDesc,
+            icon: 'edit',
+            color: 'bg-amber-100 text-amber-600'
+          };
+        case 'QUICK_LOG':
+          return {
+            date,
+            event: 'Quixr Modification',
+            desc: item.eventDetails?.modification || 'No details provided.',
+            icon: 'bolt',
+            color: 'bg-primary/10 text-primary'
+          };
+        default:
+          return {
+            date,
+            event: item.eventType,
+            desc: `Action performed by ${performedBy}.`,
+            icon: 'history',
+            color: 'bg-gray-100 text-gray-600'
+          };
+      }
+    });
+  }, [history, asset]);
 
   if (loading) return <div className="p-10">Loading...</div>;
   if (!asset && !loading) return <div className="p-10">Asset not found</div>;
@@ -233,9 +340,9 @@ const AssetDetailPage: React.FC = () => {
           <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 mb-6 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="flex flex-col md:flex-row gap-6">
-                <div 
-                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-xl min-h-32 w-32 border border-gray-100 dark:border-gray-800 shadow-inner" 
-                  style={{backgroundImage: 'url("https://picsum.photos/seed/macbook/200/200")'}}
+                <div
+                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-xl min-h-32 w-32 border border-gray-100 dark:border-gray-800 shadow-inner"
+                  style={{ backgroundImage: 'url("https://picsum.photos/seed/macbook/200/200")' }}
                 ></div>
                 <div className="flex flex-col justify-center">
                   <div className="flex items-center gap-3 mb-1">
@@ -252,7 +359,7 @@ const AssetDetailPage: React.FC = () => {
                     }`}>{asset.status}</span>
                   </div>
                   <p className="text-[#617589] text-base font-normal">
-                    Assigned to <span className="text-[#111418] dark:text-white font-medium">{asset.employee?.name || 'Unassigned'}</span> 
+                    Assigned to <span className="text-[#111418] dark:text-white font-medium">{asset.employee?.name || 'Unassigned'}</span>
                     {asset.employee?.number && <span className="text-[#617589]"> ({asset.employee.number})</span>}
                     {asset.employee?.department && ` (${asset.employee.department})`}
                   </p>
@@ -261,22 +368,22 @@ const AssetDetailPage: React.FC = () => {
               </div>
               <div className="flex flex-wrap gap-3">
                 {isEditing ? (
-                    <>
-                        <button onClick={() => setIsEditing(false)} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-gray-200 text-gray-700 text-sm font-bold">
-                            Cancel
-                        </button>
-                        <button onClick={handleSave} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-green-600 text-white text-sm font-bold hover:bg-green-700">
-                            <span className="material-symbols-outlined">save</span>
-                            <span>Save Changes</span>
-                        </button>
-                    </>
-                ) : (
-                    <button onClick={() => setIsEditing(true)} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-[#f0f2f4] dark:bg-slate-800 text-[#111418] dark:text-white text-sm font-bold border border-transparent hover:border-gray-300 transition-all">
-                        <span className="material-symbols-outlined">edit</span>
-                        <span>Edit</span>
+                  <>
+                    <button onClick={() => setIsEditing(false)} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-gray-200 text-gray-700 text-sm font-bold">
+                      Cancel
                     </button>
+                    <button onClick={handleSave} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-green-600 text-white text-sm font-bold hover:bg-green-700">
+                      <span className="material-symbols-outlined">save</span>
+                      <span>Save Changes</span>
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setIsEditing(true)} className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-[#f0f2f4] dark:bg-slate-800 text-[#111418] dark:text-white text-sm font-bold border border-transparent hover:border-gray-300 transition-all">
+                    <span className="material-symbols-outlined">edit</span>
+                    <span>Edit</span>
+                  </button>
                 )}
-                <button 
+                <button
                   onClick={() => setIsAssignModalOpen(true)}
                   className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
                 >
@@ -289,57 +396,57 @@ const AssetDetailPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div className="bg-white dark:bg-[#1a2632] rounded-xl p-5 border border-[#dbe0e6] dark:border-gray-800">
-               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Procurement Details</h3>
-               <div className="space-y-3">
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Invoice Number</span>
-                   <span className="font-bold text-primary">{asset.invoiceNumber || '-'}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Added By</span>
-                   <span className="font-bold">{asset.addedBy || '-'}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Purchased On</span>
-                   <span className="font-medium">{asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '-'}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Vendor</span>
-                   <span className="font-medium">{asset.vendorName || '-'}</span>
-                 </div>
-               </div>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Procurement Details</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Invoice Number</span>
+                  <span className="font-bold text-primary">{asset.invoiceNumber || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Added By</span>
+                  <span className="font-bold">{asset.addedBy || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Purchased On</span>
+                  <span className="font-medium">{asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Vendor</span>
+                  <span className="font-medium">{asset.vendorName || '-'}</span>
+                </div>
+              </div>
             </div>
 
             <div className="bg-white dark:bg-[#1a2632] rounded-xl p-5 border border-[#dbe0e6] dark:border-gray-800">
-               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">System Specs</h3>
-               <div className="space-y-3">
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Processor</span>
-                   <span className="font-medium">{asset.specs?.processor || '-'}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Memory</span>
-                   <span className="font-medium">{asset.specs?.memory || '-'}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Battery Health</span>
-                   <span className="font-bold text-green-500">{asset.specs?.batteryHealth || '-'}</span>
-                 </div>
-               </div>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">System Specs</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Processor</span>
+                  <span className="font-medium">{asset.specs?.processor || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Memory</span>
+                  <span className="font-medium">{asset.specs?.memory || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Battery Health</span>
+                  <span className="font-bold text-green-500">{asset.specs?.batteryHealth || '-'}</span>
+                </div>
+              </div>
             </div>
 
             <div className="bg-white dark:bg-[#1a2632] rounded-xl p-5 border border-[#dbe0e6] dark:border-gray-800">
-               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Location Info</h3>
-               <div className="space-y-3">
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Description / Loc</span>
-                   <span className="font-medium">{asset.description || '-'}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                   <span className="text-[#617589]">Last Seen</span>
-                   <span className="font-medium">Today</span>
-                 </div>
-               </div>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Location Info</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Description / Loc</span>
+                  <span className="font-medium">{asset.description || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#617589]">Last Seen</span>
+                  <span className="font-medium">Today</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -352,13 +459,13 @@ const AssetDetailPage: React.FC = () => {
                     <h3 className="text-lg font-bold">Installed Software</h3>
                     {softwareData?.verification && (
                       <p className="text-xs text-[#617589] mt-1">
-                        Last scanned: {new Date(softwareData.verification.scannedAt).toLocaleString()} • 
-                        Total: {installedSoftwareList.length} applications • 
+                        Last scanned: {new Date(softwareData.verification.scannedAt).toLocaleString()} •
+                        Total: {installedSoftwareList.length} applications •
                         Scanned by: {softwareData.verification.employeeId?.name || 'Unknown'}
                       </p>
                     )}
                   </div>
-                  <button 
+                  <button
                     onClick={fetchInstalledSoftware}
                     className="text-xs font-bold text-primary px-3 py-1 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors flex items-center gap-1"
                   >
@@ -398,12 +505,11 @@ const AssetDetailPage: React.FC = () => {
                               <td className="py-3 px-2 text-xs text-[#617589] max-w-xs truncate">{sw.publisher || '-'}</td>
                               <td className="py-3 px-2 text-xs text-[#617589]">{sw.installDate ? new Date(sw.installDate).toLocaleDateString() : '-'}</td>
                               <td className="py-3 px-2 text-right">
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                                  sw.source === 'Registry' ? 'bg-blue-100 text-blue-700' :
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${sw.source === 'Registry' ? 'bg-blue-100 text-blue-700' :
                                   sw.source === 'WMI' ? 'bg-green-100 text-green-700' :
-                                  sw.source === 'PackageManager' ? 'bg-purple-100 text-purple-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
+                                    sw.source === 'PackageManager' ? 'bg-purple-100 text-purple-700' :
+                                      'bg-gray-100 text-gray-700'
+                                  }`}>
                                   {sw.source || 'Unknown'}
                                 </span>
                               </td>
@@ -457,64 +563,64 @@ const AssetDetailPage: React.FC = () => {
                   </>
                 )}
               </div>
-              
+
               {/* NEW SECTION: Asset Details */}
               <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 shadow-sm">
-                  <h3 className="text-lg font-bold mb-6">Asset Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[
-                        { label: 'Asset Id', name: 'assetTag', value: asset.assetTag, type: 'text' },
-                        { label: 'Asset Name', name: 'assetName', value: asset.assetName, type: 'text' },
-                        { label: 'Description / Location', name: 'description', value: asset.description, type: 'text' },
-                        { label: 'Warranty Expires On', name: 'warrantyExpiry', value: asset.warrantyExpiry, type: 'date' },
-                        { label: 'Asset Condition', name: 'condition', value: asset.condition, type: 'select', options: ['New', 'Good', 'Fair', 'Poor', 'Damaged'] },
-                        { label: 'Asset Status', name: 'status', value: asset.status, type: 'select', options: ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged'] },
-                        { label: 'Reason (if N/A)', name: 'reasonNotAvailable', value: asset.reasonNotAvailable, type: 'text' },
-                        { label: 'Employee #', name: 'employee.number', value: asset.employee?.number, type: 'text' },
-                        { label: 'Employee Name', name: 'employee.name', value: asset.employee?.name, type: 'text' },
-                        { label: 'Department', name: 'employee.department', value: asset.employee?.department, type: 'text' },
-                        { label: 'Sub-Department', name: 'employee.subDepartment', value: asset.employee?.subDepartment, type: 'text' },
-                        { label: 'Assignment Date', name: 'assignmentDate', value: asset.assignmentDate, type: 'date' },
-                        { label: 'Invoice No', name: 'invoiceNumber', value: asset.invoiceNumber, type: 'text' },
-                        { label: 'Vendor Name', name: 'vendorName', value: asset.vendorName, type: 'text' },
-                        { label: 'PO', name: 'purchaseOrderNumber', value: asset.purchaseOrderNumber, type: 'text' },
-                        { label: 'Asset Serial/Tag', name: 'serialNumber', value: asset.serialNumber, type: 'text' },
-                        { label: 'RAM', name: 'specs.memory', value: asset.specs?.memory, type: 'text' },
-                        { label: 'Processor', name: 'specs.processor', value: asset.specs?.processor, type: 'text' },
-                        { label: 'HDD', name: 'specs.storage', value: asset.specs?.storage, type: 'text' },
-                        { label: 'Asset Model', name: 'model', value: asset.model, type: 'text' },
-                        { label: 'Make', name: 'make', value: asset.make, type: 'text' },
-                      ].map((field, i) => (
-                          <div key={i} className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-[#617589] uppercase tracking-tight">{field.label}</label>
-                              {isEditing ? (
-                                  field.type === 'select' ? (
-                                    <select 
-                                        name={field.name}
-                                        value={field.name.includes('.') ? field.name.split('.').reduce((a:any, b:any) => a?.[b], formData) : formData[field.name] || ''}
-                                        onChange={handleChange}
-                                        className="border border-gray-300 rounded p-1.5 text-sm bg-gray-50"
-                                    >
-                                        <option value="">Select...</option>
-                                        {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                    </select>
-                                  ) : (
-                                    <input 
-                                        type={field.type} 
-                                        name={field.name}
-                                        value={field.name.includes('.') ? field.name.split('.').reduce((a:any, b:any) => a?.[b], formData) || '' : formData[field.name] || ''}
-                                        onChange={handleChange}
-                                        className="border border-gray-300 rounded p-1.5 text-sm bg-gray-50 focus:ring-1 focus:ring-primary outline-none"
-                                    />
-                                  )
-                              ) : (
-                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 min-h-[20px]">
-                                      {field.value ? (field.type === 'date' ? new Date(field.value).toLocaleDateString() : field.value) : '-'}
-                                  </span>
-                              )}
-                          </div>
-                      ))}
-                  </div>
+                <h3 className="text-lg font-bold mb-6">Asset Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { label: 'Asset Id', name: 'assetTag', value: asset.assetTag, type: 'text' },
+                    { label: 'Asset Name', name: 'assetName', value: asset.assetName, type: 'text' },
+                    { label: 'Description / Location', name: 'description', value: asset.description, type: 'text' },
+                    { label: 'Warranty Expires On', name: 'warrantyExpiry', value: asset.warrantyExpiry, type: 'date' },
+                    { label: 'Asset Condition', name: 'condition', value: asset.condition, type: 'select', options: ['New', 'Good', 'Fair', 'Poor', 'Damaged'] },
+                    { label: 'Asset Status', name: 'status', value: asset.status, type: 'select', options: ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged'] },
+                    { label: 'Reason (if N/A)', name: 'reasonNotAvailable', value: asset.reasonNotAvailable, type: 'text' },
+                    { label: 'Employee #', name: 'employee.number', value: asset.employee?.number, type: 'text' },
+                    { label: 'Employee Name', name: 'employee.name', value: asset.employee?.name, type: 'text' },
+                    { label: 'Department', name: 'employee.department', value: asset.employee?.department, type: 'text' },
+                    { label: 'Sub-Department', name: 'employee.subDepartment', value: asset.employee?.subDepartment, type: 'text' },
+                    { label: 'Assignment Date', name: 'assignmentDate', value: asset.assignmentDate, type: 'date' },
+                    { label: 'Invoice No', name: 'invoiceNumber', value: asset.invoiceNumber, type: 'text' },
+                    { label: 'Vendor Name', name: 'vendorName', value: asset.vendorName, type: 'text' },
+                    { label: 'PO', name: 'purchaseOrderNumber', value: asset.purchaseOrderNumber, type: 'text' },
+                    { label: 'Asset Serial/Tag', name: 'serialNumber', value: asset.serialNumber, type: 'text' },
+                    { label: 'RAM', name: 'specs.memory', value: asset.specs?.memory, type: 'text' },
+                    { label: 'Processor', name: 'specs.processor', value: asset.specs?.processor, type: 'text' },
+                    { label: 'HDD', name: 'specs.storage', value: asset.specs?.storage, type: 'text' },
+                    { label: 'Asset Model', name: 'model', value: asset.model, type: 'text' },
+                    { label: 'Make', name: 'make', value: asset.make, type: 'text' },
+                  ].map((field, i) => (
+                    <div key={i} className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-[#617589] uppercase tracking-tight">{field.label}</label>
+                      {isEditing ? (
+                        field.type === 'select' ? (
+                          <select
+                            name={field.name}
+                            value={field.name.includes('.') ? field.name.split('.').reduce((a: any, b: any) => a?.[b], formData) : formData[field.name] || ''}
+                            onChange={handleChange}
+                            className="border border-gray-300 rounded p-1.5 text-sm bg-gray-50"
+                          >
+                            <option value="">Select...</option>
+                            {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type}
+                            name={field.name}
+                            value={field.name.includes('.') ? field.name.split('.').reduce((a: any, b: any) => a?.[b], formData) || '' : formData[field.name] || ''}
+                            onChange={handleChange}
+                            className="border border-gray-300 rounded p-1.5 text-sm bg-gray-50 focus:ring-1 focus:ring-primary outline-none"
+                          />
+                        )
+                      ) : (
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 min-h-[20px]">
+                          {field.value ? (field.type === 'date' ? new Date(field.value).toLocaleDateString() : field.value) : '-'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800 shadow-sm">
@@ -536,14 +642,14 @@ const AssetDetailPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800">
                 <h3 className="text-lg font-bold mb-4">Asset Tag QR</h3>
                 <div className="aspect-square bg-white dark:bg-gray-100 rounded-lg flex items-center justify-center p-6 border border-gray-200 dark:border-gray-800 overflow-hidden">
                   {/* Mock QR placeholder */}
                   <div className="size-full border-4 border-black dark:border-slate-800 border-double opacity-20 flex items-center justify-center relative">
-                     <span className="material-symbols-outlined text-6xl">qr_code_2</span>
+                    <span className="material-symbols-outlined text-6xl">qr_code_2</span>
                   </div>
                 </div>
                 <button className="w-full mt-4 py-2 text-slate-500 font-bold text-xs bg-slate-50 dark:bg-gray-800 rounded-lg hover:bg-slate-100 transition-colors">Download QR Tag</button>
@@ -552,14 +658,14 @@ const AssetDetailPage: React.FC = () => {
               <div className="bg-white dark:bg-[#1a2632] rounded-xl p-6 border border-[#dbe0e6] dark:border-gray-800">
                 <h3 className="text-lg font-bold mb-4">Attachments</h3>
                 <div className="space-y-2">
-                   <div className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
-                      <span className="material-symbols-outlined text-primary">description</span>
-                      <span className="text-xs font-bold truncate">purchase_invoice_428.pdf</span>
-                   </div>
-                   <div className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
-                      <span className="material-symbols-outlined text-amber-500">verified</span>
-                      <span className="text-xs font-bold truncate">warranty_cert.pdf</span>
-                   </div>
+                  <div className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
+                    <span className="material-symbols-outlined text-primary">description</span>
+                    <span className="text-xs font-bold truncate">purchase_invoice_428.pdf</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
+                    <span className="material-symbols-outlined text-amber-500">verified</span>
+                    <span className="text-xs font-bold truncate">warranty_cert.pdf</span>
+                  </div>
                 </div>
                 <button className="w-full mt-4 py-2 border border-dashed border-gray-300 dark:border-gray-700 text-slate-400 font-bold text-[10px] uppercase rounded-lg hover:border-primary hover:text-primary transition-all">Upload File</button>
               </div>
@@ -578,7 +684,7 @@ const AssetDetailPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-[#111418] dark:text-white">
                   {asset.employee?.number ? 'Reassign Asset' : 'Assign Asset'}
                 </h2>
-                <button 
+                <button
                   onClick={() => {
                     setIsAssignModalOpen(false);
                     setSelectedEmployee(null);
@@ -618,11 +724,10 @@ const AssetDetailPage: React.FC = () => {
                     <div
                       key={emp._id}
                       onClick={() => setSelectedEmployee(emp)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                        selectedEmployee?._id === emp._id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
-                      }`}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedEmployee?._id === emp._id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
