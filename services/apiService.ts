@@ -247,6 +247,11 @@ class ApiService {
     });
   }
 
+  // Asset History
+  async getAssetHistory(assetId: string): Promise<any[]> {
+    return this.request<any[]>(`/assets/${assetId}/history`);
+  }
+
   // License CRUD operations
   async getLicenses(): Promise<License[]> {
     return this.request<License[]>('/licenses');

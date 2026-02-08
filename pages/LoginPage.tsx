@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import apiService from '../services/apiService';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [showUserAuth, setShowUserAuth] = useState(false);
   const [empId, setEmpId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleUserLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empId.trim()) return;
 
@@ -17,8 +19,14 @@ const LoginPage: React.FC = () => {
       setLoading(true);
       setError('');
       const employee = await apiService.getEmployee(empId.trim());
-      localStorage.setItem('currentUser', JSON.stringify(employee));
-      navigate('/user/verify');
+      login(employee);
+
+      // Role-Based Redirection
+      if (employee.role === 'Admin' || employee.role === 'IT Support') {
+        navigate('/');
+      } else {
+        navigate('/user/verify');
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid Employee ID or connection error');
     } finally {
@@ -29,8 +37,8 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen grid-bg flex flex-col transition-colors duration-200">
       <header className="p-6 md:p-10 flex items-center space-x-2">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center rotate-12 shadow-sm">
-          <span className="material-icons-round text-white text-lg">inventory_2</span>
+        <div className="w-8 h-8 bg-transparent rounded-lg flex items-center justify-center rotate-12 overflow-hidden">
+          <img src="/logo.png" alt="AssetTrack Logo" className="w-full h-full object-contain" />
         </div>
         <span className="text-slate-900 dark:text-white font-bold text-lg">Enterprise Asset Portal</span>
       </header>
@@ -43,26 +51,18 @@ const LoginPage: React.FC = () => {
                 <div className="mx-auto w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6">
                   <span className="material-icons-round text-primary text-3xl">verified_user</span>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">SSO Authentication</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Enterprise SSO</h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">
-                  Welcome to the Enterprise IT & Facilities Asset Management Portal. Please choose your login method.
+                  Welcome to the Unified Asset Workspace Management Portal. Please click below to authenticate with your corporate credentials.
                 </p>
 
                 <div className="space-y-4">
                   <button
-                    onClick={() => navigate('/')}
+                    onClick={() => setShowUserAuth(true)}
                     className="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3.5 px-6 rounded-lg transition duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
                   >
-                    <span className="material-icons-round text-sm">admin_panel_settings</span>
-                    <span>Sign in with Corporate SSO (Admin)</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowUserAuth(true)}
-                    className="w-full bg-white dark:bg-slate-800 border-2 border-primary/20 hover:border-primary text-primary dark:text-blue-400 font-semibold py-3.5 px-6 rounded-lg transition duration-200 flex items-center justify-center space-x-2 shadow-sm hover:shadow-md"
-                  >
-                    <span className="material-icons-round text-sm">person</span>
-                    <span>Sign in with User SSO (Employee)</span>
+                    <span className="material-icons-round text-sm">login</span>
+                    <span>Login with SSO</span>
                   </button>
                 </div>
               </>
@@ -78,7 +78,7 @@ const LoginPage: React.FC = () => {
                   <h2 className="text-xl font-bold flex-1 text-slate-900 dark:text-white">User Verification</h2>
                 </div>
 
-                <form onSubmit={handleUserLogin} className="space-y-5 text-left">
+                <form onSubmit={handleLogin} className="space-y-5 text-left">
                   <div>
                     <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Employee ID</label>
                     <input

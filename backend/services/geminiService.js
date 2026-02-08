@@ -86,10 +86,14 @@ class GeminiService {
             const response = await result.response;
             const text = response.text().trim();
 
+            console.log('[GeminiService] Raw Response from AI:', text);
+
             // Extract JSON from potential markdown blocks
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
+                const intent = JSON.parse(jsonMatch[0]);
+                console.log('[GeminiService] Parsed Intent:', JSON.stringify(intent, null, 2));
+                return intent;
             }
 
             throw new Error('Failed to parse intent JSON from AI response');

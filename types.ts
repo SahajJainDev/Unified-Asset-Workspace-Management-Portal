@@ -69,7 +69,7 @@ export interface Desk {
   updatedAt?: Date;
 }
 
-export interface QuikrLog {
+export interface QuixrLog {
   id: string;
   assetId: string;
   modification: string;
@@ -77,7 +77,7 @@ export interface QuikrLog {
   timestamp: string;
 }
 
-export type UserRole = 'Admin' | 'Employee';
+export type UserRole = 'Admin' | 'Employee' | 'IT Support';
 
 export interface User {
   id: string;
@@ -96,7 +96,8 @@ export interface Employee {
   fullName: string;
   email?: string;
   department?: string;
-  role?: 'Admin' | 'Employee';
+  role?: UserRole;
+  status?: 'Active' | 'Inactive';
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;

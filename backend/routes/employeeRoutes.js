@@ -233,6 +233,14 @@ router.get("/:id", async (req, res) => {
     }
 
     if (!employee) return res.status(404).json({ message: "Employee not found" });
+
+    // Status Check (Block Inactive/Disabled users)
+    if (employee.status === 'Inactive' || employee.isActive === false) {
+      return res.status(403).json({
+        message: "User account is inactive. Please contact your administrator."
+      });
+    }
+
     res.json(employee);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch employee" });

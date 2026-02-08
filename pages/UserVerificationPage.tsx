@@ -46,18 +46,18 @@ const UserVerificationPage: React.FC = () => {
           if (asset.assetType && asset.assetType !== 'Laptop') {
             return asset.assetType;
           }
-          
+
           // Infer from asset name or tag
           const name = (asset.assetName || '').toLowerCase();
           const tag = (asset.assetTag || '').toLowerCase();
-          
+
           if (name.includes('keyboard') || name.includes('keys') || tag.startsWith('key-')) return 'Keyboard';
           if (name.includes('mouse') || name.includes('mx master') || tag.startsWith('mou-')) return 'Mouse';
           if (name.includes('monitor') || name.includes('display') || name.includes('ultrasharp') || tag.startsWith('mon-')) return 'Monitor';
           if (name.includes('ipad') || name.includes('tablet') || tag.startsWith('tab-')) return 'Tablet';
           if (name.includes('iphone') || name.includes('phone') || name.includes('smartphone') || tag.startsWith('phone-')) return 'Smartphone';
           if (name.includes('macbook') || name.includes('laptop') || name.includes('thinkpad') || name.includes('elitebook') || tag.startsWith('lap-')) return 'Laptop';
-          
+
           // Default to the original assetType from DB
           return asset.assetType || 'Laptop';
         };
@@ -191,7 +191,7 @@ const UserVerificationPage: React.FC = () => {
                                   asset.type === 'Keyboard' ? 'keyboard' :
                                     asset.type === 'Smartphone' ? 'smartphone' :
                                       asset.type === 'Tablet' ? 'tablet' :
-                                        asset.type === 'Charger' ? 'charging_station' : 
+                                        asset.type === 'Charger' ? 'charging_station' :
                                           asset.type === 'Other' ? 'devices' : 'inventory_2'
                           }</span>
                         </div>
@@ -235,7 +235,7 @@ const UserVerificationPage: React.FC = () => {
 
                     {asset.isLost && (
                       <div className="p-4 rounded-xl bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
-                        <p className="text-xs font-bold text-red-700 dark:text-red-400">An IT ticket will be opened automatically in quikr to initiate replacement procedures.</p>
+                        <p className="text-xs font-bold text-red-700 dark:text-red-400">An IT ticket will be opened automatically in Quixr to initiate replacement procedures.</p>
                       </div>
                     )}
                   </div>
