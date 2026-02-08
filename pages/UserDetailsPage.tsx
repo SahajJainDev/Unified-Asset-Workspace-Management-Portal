@@ -48,7 +48,8 @@ const UserDetailsPage: React.FC = () => {
     const [isAllocateModalOpen, setIsAllocateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [unassignedAssets, setUnassignedAssets] = useState<Asset[]>([]);
-    const [editForm, setEditForm] = useState({ fullName: '', empId: '' });
+    const [editForm, setEditForm] = useState({ fullName: '', empId: '', userName: '' });
+    const [userNameError, setUserNameError] = useState('');
 
     const fetchUnassignedAssets = async () => {
         try {
@@ -104,14 +105,34 @@ const UserDetailsPage: React.FC = () => {
 
     const handleEditClick = () => {
         if (user) {
-            setEditForm({ fullName: user.fullName, empId: user.empId });
+            setEditForm({ fullName: user.fullName, empId: user.empId, userName: user.userName || '' });
+            setUserNameError('');
             setIsEditModalOpen(true);
         }
+    };
+
+    const validateUserName = (value: string): boolean => {
+        if (!value.trim()) {
+            setUserNameError('User Name is required');
+            return false;
+        }
+        if (!value.includes('.')) {
+            setUserNameError('Must contain a dot (e.g. name.surname)');
+            return false;
+        }
+        const parts = value.split('.');
+        if (parts.some(p => p.trim() === '')) {
+            setUserNameError('Must have text on both sides of the dot');
+            return false;
+        }
+        setUserNameError('');
+        return true;
     };
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user?._id) return;
+        if (!validateUserName(editForm.userName)) return;
 
         try {
             const res = await fetch(`http://localhost:5000/api/employees/${user._id}`, {
@@ -217,7 +238,7 @@ const UserDetailsPage: React.FC = () => {
 
     return (
         <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
-            <Sidebar activeTab="users" />
+            <Sidebar activeTab="employees" />
             <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
                 <Header />
                 <div className="max-w-[1200px] w-full mx-auto px-6 py-8 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -275,6 +296,10 @@ const UserDetailsPage: React.FC = () => {
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase mb-1">Email</p>
                                         <p className="font-bold text-gray-700 dark:text-gray-200">{user.email || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-1">User Name</p>
+                                        <p className="font-mono font-bold text-gray-700 dark:text-gray-200">{user.userName || '-'}</p>
                                     </div>
 
                                     <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
@@ -415,6 +440,24 @@ const UserDetailsPage: React.FC = () => {
                                             className="w-full bg-slate-50 dark:bg-slate-900 border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none dark:text-white"
                                             required
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">
+                                            User Name <span className="text-red-500">*</span>
+                                            <span className="text-gray-400 font-normal normal-case ml-1">(e.g. name.surname)</span>
+                                        </label>
+                                        <input
+                                            value={editForm.userName}
+                                            onChange={e => {
+                                                setEditForm({ ...editForm, userName: e.target.value });
+                                                if (userNameError) validateUserName(e.target.value);
+                                            }}
+                                            onBlur={() => editForm.userName && validateUserName(editForm.userName)}
+                                            placeholder="e.g. john.doe"
+                                            className={`w-full bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none dark:text-white border ${userNameError ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 dark:border-gray-700'}`}
+                                            required
+                                        />
+                                        {userNameError && <p className="text-red-500 text-xs mt-1 font-medium">{userNameError}</p>}
                                     </div>
                                     <div className="flex gap-4 pt-4">
                                         <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl">Cancel</button>
