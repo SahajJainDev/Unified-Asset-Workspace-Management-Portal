@@ -22,6 +22,7 @@ import LicenseDetailPage from './pages/LicenseDetailPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import SoftwareVerificationPage from './pages/SoftwareVerificationPage';
 import SoftwareVerificationListPage from './pages/SoftwareVerificationListPage';
+import AssetVerificationDetailPage from './pages/AssetVerificationDetailPage';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -40,6 +41,7 @@ const App: React.FC = () => {
           <Route path="/licenses/:id" element={<LicenseDetailPage />} />
           <Route path="/verification" element={<VerificationPage />} />
           <Route path="/verification-list" element={<AssetVerificationListPage />} />
+          <Route path="/verification-detail/:empId" element={<AssetVerificationDetailPage />} />
           <Route path="/software-verifications" element={<SoftwareVerificationListPage />} />
           <Route path="/Quixr-logs" element={<QuixrLogsPage />} />
           <Route path="/reports" element={<ReportsPage />} />

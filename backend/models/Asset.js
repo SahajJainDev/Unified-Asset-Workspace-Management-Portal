@@ -8,7 +8,6 @@ const AssetSchema = new mongoose.Schema({
   },
   assetType: {
     type: String,
-    enum: ['Laptop', 'Monitor', 'Mouse', 'Keyboard', 'Smartphone', 'Tablet', 'Other'],
     default: 'Laptop'
   },
   model: {

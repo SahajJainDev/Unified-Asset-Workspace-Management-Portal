@@ -22,11 +22,13 @@ const AssetDetailPage: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null);
   const [history, setHistory] = React.useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [categories, setCategories] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     fetchAsset();
     fetchInstalledSoftware();
     fetchHistory();
+    fetchCategories();
   }, [id]);
 
   React.useEffect(() => {
@@ -34,6 +36,15 @@ const AssetDetailPage: React.FC = () => {
       fetchEmployees();
     }
   }, [isAssignModalOpen]);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await apiService.getAssetCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
 
   const fetchAsset = async () => {
     try {
@@ -570,6 +581,7 @@ const AssetDetailPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
                     { label: 'Asset Id', name: 'assetTag', value: asset.assetTag, type: 'text' },
+                    { label: 'Asset Category', name: 'assetType', value: asset.assetType, type: 'select', options: categories.length > 0 ? categories.map((c: any) => c.name) : ['Laptop', 'Monitor', 'Mouse', 'Keyboard', 'Smartphone', 'Tablet', 'Other'] },
                     { label: 'Asset Name', name: 'assetName', value: asset.assetName, type: 'text' },
                     { label: 'Description / Location', name: 'description', value: asset.description, type: 'text' },
                     { label: 'Warranty Expires On', name: 'warrantyExpiry', value: asset.warrantyExpiry, type: 'date' },
