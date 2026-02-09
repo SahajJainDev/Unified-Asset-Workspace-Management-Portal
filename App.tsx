@@ -22,11 +22,8 @@ import LicenseDetailPage from './pages/LicenseDetailPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import SoftwareVerificationPage from './pages/SoftwareVerificationPage';
 import SoftwareVerificationListPage from './pages/SoftwareVerificationListPage';
-<<<<<<< main
 import AssetVerificationDetailPage from './pages/AssetVerificationDetailPage';
-=======
 import UserWorkspacePage from './pages/UserWorkspacePage';
->>>>>>> AIintegration
 
 import { AuthProvider } from './context/AuthContext';
 
