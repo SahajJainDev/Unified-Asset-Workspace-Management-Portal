@@ -73,9 +73,9 @@ const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background-light dark:bg-background-dark">
-      <Sidebar activeTab="none" />
-      <main className="flex-1 p-10 max-w-5xl mx-auto flex flex-col justify-center animate-in fade-in duration-500">
+    <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
+      <Sidebar activeTab="upload" />
+      <main className="flex-1 overflow-y-auto p-10 max-w-5xl mx-auto flex flex-col justify-center animate-in fade-in duration-500 no-scrollbar">
         <div className="mb-10 text-center">
           <h1 className="text-4xl font-black mb-4">Bulk Data Upload Wizard</h1>
           <p className="text-[#617589]">Import your hardware and software asset lists into the system.</p>

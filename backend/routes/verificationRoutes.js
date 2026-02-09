@@ -131,77 +131,118 @@ router.get('/', async (req, res) => {
 });
 
 // GET aggregated verification summary per employee (for admin)
+// Shows ALL employees with assigned assets — defaults to Pending for those who haven't submitted
 router.get('/summary', async (req, res) => {
     try {
         const { cycleId } = req.query;
-        
-        // Build match filter - if cycleId provided, filter by it
+        const mongoose = require('mongoose');
+
+        // 1. Get ALL employees who have assigned assets
+        const allAssignedAssets = await Asset.find({
+            $or: [
+                { status: 'Assigned' },
+                { 'employee.number': { $exists: true, $ne: '' } },
+                { assignedTo: { $exists: true, $ne: '', $ne: null } }
+            ]
+        }).lean();
+
+        // Group assigned assets by employee
+        const assetsByEmployee = {};
+        allAssignedAssets.forEach(asset => {
+            const empId = asset.employee?.number || asset.assignedTo || '';
+            if (!empId) return;
+            if (!assetsByEmployee[empId]) {
+                assetsByEmployee[empId] = {
+                    empId,
+                    empName: asset.employee?.name || asset.assignedTo || '',
+                    department: asset.employee?.department || '',
+                    assets: []
+                };
+            }
+            assetsByEmployee[empId].assets.push(asset);
+        });
+
+        // 2. Get existing verifications (optionally filtered by cycle)
         const matchFilter = {};
         if (cycleId) {
-            const mongoose = require('mongoose');
             matchFilter.cycleId = new mongoose.Types.ObjectId(cycleId);
         }
 
-        const pipeline = [
-            { $match: matchFilter },
-            { $sort: { verificationDate: -1 } },
-            {
-                $group: {
-                    _id: { employeeId: '$employeeId', cycleId: '$cycleId' },
-                    employeeName: { $first: '$employeeName' },
-                    lastVerifiedDate: { $first: '$verificationDate' },
-                    verifications: { $push: '$$ROOT' }
-                }
+        const allVerifications = await Verification.find(matchFilter)
+            .populate('assetId', 'assetName assetTag assetType')
+            .sort({ verificationDate: -1 })
+            .lean();
+
+        // Group verifications by employee
+        const verificationsByEmployee = {};
+        allVerifications.forEach(v => {
+            const empId = v.employeeId;
+            if (!verificationsByEmployee[empId]) {
+                verificationsByEmployee[empId] = {
+                    employeeName: v.employeeName,
+                    lastVerifiedDate: v.verificationDate,
+                    verifications: []
+                };
             }
-        ];
+            verificationsByEmployee[empId].verifications.push(v);
+        });
 
-        const employeeGroups = await Verification.aggregate(pipeline);
-
+        // 3. Build unified summaries: merge all employees with their verifications
         const summaries = [];
-        for (const group of employeeGroups) {
-            const empId = group._id.employeeId;
-            
-            // Populate asset info for each verification
-            const verifications = group.verifications;
-            const populatedVerifications = await Verification.populate(verifications, {
-                path: 'assetId',
-                select: 'assetName assetTag assetType'
-            });
+        const processedEmployees = new Set();
 
-            const totalAssets = populatedVerifications.length;
-            const verified = populatedVerifications.filter(v => v.status === 'Verified').length;
-            const flagged = populatedVerifications.filter(v => v.status === 'Flagged').length;
-            const pending = populatedVerifications.filter(v => v.status === 'Pending').length;
+        // Process all employees with assigned assets
+        for (const [empId, empData] of Object.entries(assetsByEmployee)) {
+            processedEmployees.add(empId);
+
+            const verData = verificationsByEmployee[empId];
+            const totalAssigned = empData.assets.length;
+
+            let totalVerified = 0;
+            let verified = 0;
+            let flagged = 0;
+            let pending = 0;
+            let lastVerifiedDate = null;
+            let employeeName = empData.empName;
+
+            if (verData) {
+                const vList = verData.verifications;
+                totalVerified = vList.length;
+                verified = vList.filter(v => v.status === 'Verified').length;
+                flagged = vList.filter(v => v.status === 'Flagged').length;
+                pending = vList.filter(v => v.status === 'Pending').length;
+                lastVerifiedDate = verData.lastVerifiedDate;
+                employeeName = verData.employeeName || empData.empName;
+            }
+
+            // Assets not yet verified count as pending
+            const unverifiedCount = Math.max(0, totalAssigned - totalVerified);
+            pending += unverifiedCount;
 
             // Overall status logic
             let overallStatus = 'Pending';
-            if (totalAssets > 0) {
-                if (flagged > 0) {
-                    overallStatus = 'Discrepant';
-                } else if (pending > 0) {
-                    overallStatus = 'Discrepant';
-                } else if (verified === totalAssets) {
-                    overallStatus = 'Verified';
-                }
+            if (flagged > 0) {
+                overallStatus = 'Discrepant';
+            } else if (pending > 0) {
+                overallStatus = 'Pending';
+            } else if (verified > 0 && verified === totalVerified && unverifiedCount === 0) {
+                overallStatus = 'Verified';
             }
 
-            // Get employee details and count assigned assets
-            const employee = await Employee.findOne({ empId });
-            
-            const assignedAssets = await Asset.find({
-                $or: [
-                    { 'employee.number': empId },
-                    { assignedTo: empId }
-                ]
-            });
+            // Get employee details for department if not already available
+            let department = empData.department;
+            if (!department) {
+                const employee = await Employee.findOne({ empId });
+                department = employee?.department || 'N/A';
+            }
 
             summaries.push({
                 employeeId: empId,
-                employeeName: group.employeeName,
-                department: employee ? employee.department : 'N/A',
-                lastVerifiedDate: group.lastVerifiedDate,
-                totalAssigned: assignedAssets.length,
-                totalAssets,
+                employeeName: employeeName || empId,
+                department,
+                lastVerifiedDate: lastVerifiedDate || new Date().toISOString(),
+                totalAssigned,
+                totalAssets: totalVerified,
                 verified,
                 flagged,
                 pending,
@@ -209,8 +250,43 @@ router.get('/summary', async (req, res) => {
             });
         }
 
-        // Sort by date descending
-        summaries.sort((a, b) => new Date(b.lastVerifiedDate).getTime() - new Date(a.lastVerifiedDate).getTime());
+        // 4. Include employees who submitted verifications but have no current assigned assets
+        for (const [empId, verData] of Object.entries(verificationsByEmployee)) {
+            if (processedEmployees.has(empId)) continue;
+
+            const vList = verData.verifications;
+            const verified = vList.filter(v => v.status === 'Verified').length;
+            const flagged = vList.filter(v => v.status === 'Flagged').length;
+            const pending = vList.filter(v => v.status === 'Pending').length;
+
+            let overallStatus = 'Pending';
+            if (flagged > 0) overallStatus = 'Discrepant';
+            else if (pending > 0) overallStatus = 'Discrepant';
+            else if (verified === vList.length) overallStatus = 'Verified';
+
+            const employee = await Employee.findOne({ empId });
+
+            summaries.push({
+                employeeId: empId,
+                employeeName: verData.employeeName,
+                department: employee?.department || 'N/A',
+                lastVerifiedDate: verData.lastVerifiedDate,
+                totalAssigned: 0,
+                totalAssets: vList.length,
+                verified,
+                flagged,
+                pending,
+                overallStatus
+            });
+        }
+
+        // Sort: Pending first, then Discrepant, then Verified. Within each group, by name.
+        const statusOrder = { Pending: 0, Discrepant: 1, Verified: 2 };
+        summaries.sort((a, b) => {
+            const orderDiff = (statusOrder[a.overallStatus] ?? 3) - (statusOrder[b.overallStatus] ?? 3);
+            if (orderDiff !== 0) return orderDiff;
+            return a.employeeName.localeCompare(b.employeeName);
+        });
 
         res.json(summaries);
     } catch (error) {
