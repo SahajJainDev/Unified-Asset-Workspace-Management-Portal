@@ -183,7 +183,7 @@ const FloorMapPage: React.FC = () => {
 
     return (
         <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
-            <Sidebar activeTab="floors" />
+            <Sidebar activeTab="map" />
             <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
                 <Header />
                 <div className="p-6">

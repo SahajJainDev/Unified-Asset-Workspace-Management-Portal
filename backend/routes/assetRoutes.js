@@ -37,7 +37,7 @@ const validateAssetData = async (req, res, next) => {
 
   if (assetType) {
     // Validate against configured categories from DB
-    const validCategories = await AssetCategory.find({ isActive: true }).select('name');
+    const validCategories = await AssetCategory.find({}).select('name');
     const validNames = validCategories.map(c => c.name);
     if (validNames.length > 0 && !validNames.includes(assetType)) {
       return res.status(400).json({ message: `Invalid asset type '${assetType}'. Valid types: ${validNames.join(', ')}` });

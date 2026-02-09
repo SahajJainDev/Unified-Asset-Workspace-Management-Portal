@@ -486,6 +486,13 @@ class ApiService {
     });
   }
 
+  async reassignAndDeleteCategory(id: string, targetCategoryId: string): Promise<any> {
+    return this.request<any>(`/asset-categories/${id}/reassign-and-delete`, {
+      method: 'POST',
+      body: JSON.stringify({ targetCategoryId }),
+    });
+  }
+
   // Global Search
   async searchGlobal(query: string): Promise<{ assets: any[], software: any[], licenses: any[] }> {
     return this.request<{ assets: any[], software: any[], licenses: any[] }>(`/dashboard/search?q=${encodeURIComponent(query)}`);

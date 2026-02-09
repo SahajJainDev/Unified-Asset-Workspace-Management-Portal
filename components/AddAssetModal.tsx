@@ -11,7 +11,7 @@ interface AddAssetModalProps {
 
 const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAssetAdded, categories }) => {
   const activeCategories = categories && categories.length > 0
-    ? categories.filter(c => c.isActive)
+    ? categories
     : [{ _id: '1', name: 'Laptop', icon: 'laptop_mac', isActive: true }, { _id: '2', name: 'Monitor', icon: 'desktop_windows', isActive: true }, { _id: '3', name: 'Mouse', icon: 'mouse', isActive: true }, { _id: '4', name: 'Keyboard', icon: 'keyboard', isActive: true }, { _id: '5', name: 'Smartphone', icon: 'smartphone', isActive: true }, { _id: '6', name: 'Tablet', icon: 'tablet_mac', isActive: true }, { _id: '7', name: 'Other', icon: 'devices', isActive: true }];
   const [formData, setFormData] = useState({
     assetName: '',
