@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import AddAssetModal from '../components/AddAssetModal';
+import AddLicenseModal from '../components/AddLicenseModal';
 import AIChatBot from '../components/AIChatBot';
 import AssetInventoryForecast from '../components/AssetInventoryForecast';
 import apiService from '../services/apiService';
@@ -11,7 +13,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 // Chart data will be populated from API response
 
 const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
   const [notificationSent, setNotificationSent] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -56,19 +60,24 @@ const DashboardPage: React.FC = () => {
         
         <div className="p-6 lg:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Top Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {loading ? (
-              <div className="col-span-4 text-center py-8 text-[#617589]">Loading dashboard stats...</div>
+              <div className="col-span-5 text-center py-8 text-[#617589]">Loading dashboard stats...</div>
             ) : error ? (
-              <div className="col-span-4 text-center py-8 text-red-500">Error: {error}</div>
+              <div className="col-span-5 text-center py-8 text-red-500">Error: {error}</div>
             ) : dashboardStats ? (
               [
-                { label: 'Total Assets', value: dashboardStats.totalAssets.toLocaleString(), sub: 'Managed enterprise assets', icon: 'inventory_2', trend: '2.4%', trendUp: true, color: 'text-primary' },
-                { label: 'Desk Occupancy', value: `${Math.round((dashboardStats.deskStatus.occupied / dashboardStats.deskStatus.total) * 100)}%`, sub: `${dashboardStats.deskStatus.occupied}/${dashboardStats.deskStatus.total} desks occupied`, icon: 'table_restaurant', trend: '5.0%', trendUp: true, color: 'text-indigo-500' },
-                { label: 'Expiring Licenses', value: dashboardStats.expiringLicenses.toString(), sub: 'Due in < 30 days', icon: 'business_center', badge: dashboardStats.expiringLicenses > 0 ? 'Action Needed' : null, badgeColor: 'bg-amber-100 text-amber-700', color: 'text-amber-500' },
+                { label: 'Total Assets', value: dashboardStats.totalAssets.toLocaleString(), sub: 'Managed enterprise assets', icon: 'inventory_2', trend: '2.4%', trendUp: true, color: 'text-primary', path: '/assets' },
+                { label: 'Desk Occupancy', value: `${Math.round((dashboardStats.deskStatus.occupied / dashboardStats.deskStatus.total) * 100)}%`, sub: `${dashboardStats.deskStatus.occupied}/${dashboardStats.deskStatus.total} desks occupied`, icon: 'table_restaurant', trend: '5.0%', trendUp: true, color: 'text-indigo-500', path: '/map' },
+                { label: 'Total Licenses', value: (dashboardStats.totalLicenses || 0).toString(), sub: `${dashboardStats.activeLicenses || 0} active, ${dashboardStats.expiredLicenses || 0} expired`, icon: 'license', color: 'text-violet-500', path: '/software' },
+                { label: 'Expiring Licenses', value: dashboardStats.expiringLicenses.toString(), sub: 'Due in < 30 days', icon: 'business_center', badge: dashboardStats.expiringLicenses > 0 ? 'Action Needed' : null, badgeColor: 'bg-amber-100 text-amber-700', color: 'text-amber-500', path: '/software' },
                 { label: 'Pending Alerts', value: '5', sub: 'Requires attention', icon: 'report', badge: 'Critical', badgeColor: 'bg-red-100 text-red-700', color: 'text-red-500' },
               ].map((card, i) => (
-                <div key={i} className="bg-white dark:bg-[#1a2632] p-5 rounded-2xl border border-[#dbe0e6] dark:border-gray-800 shadow-sm flex flex-col justify-between">
+                <div
+                  key={i}
+                  onClick={() => card.path && navigate(card.path)}
+                  className={`bg-white dark:bg-[#1a2632] p-5 rounded-2xl border border-[#dbe0e6] dark:border-gray-800 shadow-sm flex flex-col justify-between ${card.path ? 'cursor-pointer hover:shadow-md hover:border-primary/30 transition-all' : ''}`}
+                >
                   <div className="flex justify-between items-start mb-2">
                     <div className={`size-10 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-800 ${card.color}`}>
                       <span className="material-symbols-outlined">{card.icon}</span>
@@ -253,6 +262,13 @@ const DashboardPage: React.FC = () => {
                         <span className="material-symbols-outlined text-lg">add_circle</span>
                         <span>Add New Asset</span>
                       </button>
+                      <button 
+                        onClick={() => setIsLicenseModalOpen(true)}
+                        className="flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10 text-sm font-bold w-full"
+                      >
+                        <span className="material-symbols-outlined text-lg">license</span>
+                        <span>Add New License</span>
+                      </button>
                     </div>
                   </div>
                   <div className="absolute -bottom-10 -right-10 size-40 bg-white/5 rounded-full blur-3xl"></div>
@@ -290,6 +306,12 @@ const DashboardPage: React.FC = () => {
       <AddAssetModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
+      />
+
+      <AddLicenseModal
+        isOpen={isLicenseModalOpen}
+        onClose={() => setIsLicenseModalOpen(false)}
+        onSuccess={() => fetchDashboardStats()}
       />
     </div>
   );

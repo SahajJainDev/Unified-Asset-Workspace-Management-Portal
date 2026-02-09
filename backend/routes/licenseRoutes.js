@@ -6,14 +6,14 @@ const router = express.Router();
 
 // Validation rules
 const licenseValidationRules = [
-  body('softwareName').optional().trim().isLength({ min: 1 }).withMessage('Software name cannot be empty if provided'),
-  body('version').optional().isLength({ min: 1 }).withMessage('Version cannot be empty if provided'),
-  body('invoiceNumber').optional().isLength({ min: 1 }).withMessage('Invoice number cannot be empty if provided'),
-  body('addedBy').optional().isLength({ min: 1 }).withMessage('Added by cannot be empty if provided'),
-  body('startDate').optional(),
-  body('expiryDate').optional(),
-  body('seatsLimit').optional().isInt({ min: 1 }).withMessage('Seats limit must be a positive integer'),
-  body('licenseKey').optional().isLength({ min: 1 }).withMessage('License key cannot be empty if provided'),
+  body('softwareName').optional({ checkFalsy: true }).trim().isLength({ min: 1 }).withMessage('Software name cannot be empty if provided'),
+  body('version').optional({ checkFalsy: true }).isLength({ min: 1 }).withMessage('Version cannot be empty if provided'),
+  body('invoiceNumber').optional({ checkFalsy: true }).isLength({ min: 1 }).withMessage('Invoice number cannot be empty if provided'),
+  body('addedBy').optional({ checkFalsy: true }).isLength({ min: 1 }).withMessage('Added by cannot be empty if provided'),
+  body('startDate').optional({ checkFalsy: true }),
+  body('expiryDate').optional({ checkFalsy: true }),
+  body('seatsLimit').optional({ checkFalsy: true }).isInt({ min: 1 }).withMessage('Seats limit must be a positive integer'),
+  body('licenseKey').optional({ checkFalsy: true }).isLength({ min: 1 }).withMessage('License key cannot be empty if provided'),
 ];
 
 // Middleware to handle validation errors
