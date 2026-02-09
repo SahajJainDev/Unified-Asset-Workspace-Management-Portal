@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const verificationSchema = new mongoose.Schema({
+  cycleId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VerificationCycle',
+    default: null
+  },
   assetId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Asset',
@@ -46,5 +51,6 @@ const verificationSchema = new mongoose.Schema({
 verificationSchema.index({ status: 1 });
 verificationSchema.index({ assetId: 1 });
 verificationSchema.index({ verificationDate: -1 });
+verificationSchema.index({ employeeId: 1, cycleId: 1 });
 
 module.exports = mongoose.model('Verification', verificationSchema);

@@ -119,6 +119,7 @@ interface VerificationPost {
   employeeId: string;
   status: 'Verified' | 'Pending' | 'Flagged';
   notes?: string;
+  cycleId?: string;
 }
 
 interface Floor {
@@ -421,8 +422,88 @@ class ApiService {
     });
   }
 
+  async submitBatchVerification(employeeId: string, cycleId: string, verifications: Array<{ assetId: string; enteredAssetId: string; status: string; notes?: string }>): Promise<any> {
+    return this.request<any>('/verifications/batch', {
+      method: 'POST',
+      body: JSON.stringify({ employeeId, cycleId, verifications }),
+    });
+  }
+
   async getVerifications(): Promise<VerificationRecord[]> {
     return this.request<VerificationRecord[]>('/verifications');
+  }
+
+  async getVerificationSummary(cycleId?: string): Promise<any[]> {
+    const query = cycleId ? `?cycleId=${cycleId}` : '';
+    return this.request<any[]>(`/verifications/summary${query}`);
+  }
+
+  async getEmployeeVerificationDetail(empId: string, cycleId?: string): Promise<any> {
+    const query = cycleId ? `?cycleId=${cycleId}` : '';
+    return this.request<any>(`/verifications/employee/${empId}${query}`);
+  }
+
+  // Verification Cycle operations
+  async getActiveCycle(): Promise<any> {
+    return this.request<any>('/verification-cycles/active');
+  }
+
+  async getAllCycles(): Promise<any[]> {
+    return this.request<any[]>('/verification-cycles');
+  }
+
+  async startVerificationCycle(data: { title: string; createdBy: string; notes?: string }): Promise<any> {
+    return this.request<any>('/verification-cycles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async closeVerificationCycle(cycleId: string, closedBy: string): Promise<any> {
+    return this.request<any>(`/verification-cycles/${cycleId}/close`, {
+      method: 'PATCH',
+      body: JSON.stringify({ closedBy }),
+    });
+  }
+
+  async getEmployeeCycleStatus(cycleId: string, empId: string): Promise<{ hasSubmitted: boolean; submissionCount: number }> {
+    return this.request<{ hasSubmitted: boolean; submissionCount: number }>(`/verification-cycles/${cycleId}/employee-status/${empId}`);
+  }
+
+  async getSubmittedAssetsForCycle(cycleId: string, empId: string): Promise<{ assetIds: string[] }> {
+    return this.request<{ assetIds: string[] }>(`/verifications/cycle/${cycleId}/employee/${empId}/submitted`);
+  }
+
+  // Asset Category operations
+  async getAssetCategories(): Promise<any[]> {
+    return this.request<any[]>('/asset-categories');
+  }
+
+  async createAssetCategory(data: { name: string; icon?: string }): Promise<any> {
+    return this.request<any>('/asset-categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAssetCategory(id: string, data: { name?: string; icon?: string; isActive?: boolean }): Promise<any> {
+    return this.request<any>(`/asset-categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAssetCategory(id: string): Promise<any> {
+    return this.request<any>(`/asset-categories/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async reassignAndDeleteCategory(id: string, targetCategoryId: string): Promise<any> {
+    return this.request<any>(`/asset-categories/${id}/reassign-and-delete`, {
+      method: 'POST',
+      body: JSON.stringify({ targetCategoryId }),
+    });
   }
 
   // Global Search
