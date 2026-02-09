@@ -181,6 +181,19 @@ interface ChatSession {
   createdAt: string;
 }
 
+interface HotDeskBooking {
+  _id?: string;
+  seatId: string;
+  workstationId: string;
+  employeeId: string;
+  employeeName: string;
+  bookingDate: Date;
+  timeSlot?: string;
+  bookingType: 'TEMPORARY' | 'PERMANENT';
+  status: 'Booked' | 'Cancelled' | 'Completed';
+  bookedAt?: Date;
+}
+
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -573,6 +586,34 @@ class ApiService {
 
   async createNewChatSession(): Promise<ChatSession> {
     return this.request<ChatSession>('/chat/new-session', {
+      method: 'POST',
+    });
+  }
+
+  // Hot-Desk operations
+  async getAvailableSeats(date: string, slot: string, bookingType?: string): Promise<any[]> {
+    return this.request<any[]>(`/hotdesk/available-seats?date=${date}&slot=${encodeURIComponent(slot)}&bookingType=${bookingType || 'TEMPORARY'}`);
+  }
+
+  async bookHotDesk(bookingData: Omit<HotDeskBooking, '_id' | 'status' | 'bookedAt'>): Promise<HotDeskBooking> {
+    return this.request<HotDeskBooking>('/hotdesk/book', {
+      method: 'POST',
+      body: JSON.stringify(bookingData),
+    });
+  }
+
+  async getMyHotDeskBookings(empId: string): Promise<HotDeskBooking[]> {
+    return this.request<HotDeskBooking[]>(`/hotdesk/my-bookings/${empId}`);
+  }
+
+  async cancelHotDeskBooking(id: string): Promise<any> {
+    return this.request<any>(`/hotdesk/cancel/${id}`, {
+      method: 'POST',
+    });
+  }
+
+  async unassignSeatAdmin(id: string): Promise<any> {
+    return this.request<any>(`/hotdesk/admin/unassign/${id}`, {
       method: 'POST',
     });
   }

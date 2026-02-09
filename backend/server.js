@@ -31,6 +31,10 @@ app.use('/api/software-verification', require('./routes/softwareVerificationRout
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/actions', require('./routes/actionRoutes'));
+app.use('/api/hotdesk', require('./routes/hotDeskRoutes'));
+
+const { startBookingScheduler } = require('./utils/bookingScheduler');
+startBookingScheduler();
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
