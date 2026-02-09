@@ -52,6 +52,15 @@ router.get("/stats", async (req, res) => {
       }
     });
 
+    // Total and active license counts
+    const totalLicenses = await License.countDocuments();
+    const activeLicenses = await License.countDocuments({
+      expiryDate: { $gte: new Date() }
+    });
+    const expiredLicenses = await License.countDocuments({
+      expiryDate: { $lt: new Date() }
+    });
+
     // Recent activities (Real Data)
     const recentActivities = await Activity.find()
       .sort({ timestamp: -1 })
@@ -99,6 +108,9 @@ router.get("/stats", async (req, res) => {
       })),
       assetStatusCounts,
       expiringLicenses,
+      totalLicenses,
+      activeLicenses,
+      expiredLicenses,
       deskStatus,
       verificationStats,
       recentActivities: recentActivities.map(activity => ({
