@@ -37,10 +37,10 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen grid-bg flex flex-col transition-colors duration-200">
       <header className="p-6 md:p-10 flex items-center space-x-2">
-        <div className="w-8 h-8 bg-transparent rounded-lg flex items-center justify-center rotate-12 overflow-hidden">
+        <div className="w-8 h-8 bg-transparent rounded-lg flex items-center justify-center overflow-hidden">
           <img src="/logo.png" alt="AssetTrack Logo" className="w-full h-full object-contain" />
         </div>
-        <span className="text-slate-900 dark:text-white font-bold text-lg">Enterprise Asset Portal</span>
+        <span className="text-slate-900 dark:text-white font-bold text-lg">PalTech AssetTrack Pro</span>
       </header>
 
       <main className="flex-grow flex items-center justify-center p-4">
@@ -118,7 +118,7 @@ const LoginPage: React.FC = () => {
       </main>
 
       <footer className="p-6 text-center text-slate-400 text-xs">
-        &copy; 2024 AssetTrack Pro. Secure Enterprise Authentication Required.
+        &copy; 2026 AssetTrack Pro. Secure Enterprise Authentication Required.
       </footer>
     </div>
   );

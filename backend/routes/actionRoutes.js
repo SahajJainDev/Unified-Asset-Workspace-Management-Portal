@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Asset = require('../models/Asset');
 const Employee = require('../models/Employee');
+const Desk = require('../models/Desk');
 const { logActivity } = require('../utils/activityLogger');
 
 /**
@@ -25,6 +26,10 @@ router.post('/execute', async (req, res) => {
                 return await handleReassign(req, res, entities, actor);
             case 'getStatus':
                 return await handleGetStatus(req, res, entities);
+            case 'getWorkspaceStatus':
+                return await handleGetWorkspaceStatus(req, res, entities);
+            case 'getStats':
+                return await handleGetStats(req, res, entities);
             default:
                 return res.status(400).json({ message: `Unsupported intent: ${intent}` });
         }
@@ -208,6 +213,56 @@ async function handleGetStatus(req, res, entities) {
         message: statusMsg,
         status: asset.status,
         assignee: asset.employee?.name
+    });
+}
+
+async function handleGetWorkspaceStatus(req, res, entities) {
+    const { workstation: wsQuery } = entities;
+
+    if (!wsQuery) {
+        return res.status(400).json({ message: "Which workstation would you like to check? (e.g., A-101)" });
+    }
+
+    const desk = await Desk.findOne({
+        $or: [
+            { workstationId: wsQuery },
+            { workstationId: { $regex: new RegExp(wsQuery, 'i') } }
+        ]
+    });
+
+    if (!desk) return res.status(404).json({ message: `Workstation ${wsQuery} not found.` });
+
+    let message = `Workstation ${desk.workstationId} is currently ${desk.status}.`;
+    if (desk.status !== 'Available' && desk.userName) {
+        message += ` It is assigned to ${desk.userName}.`;
+    }
+
+    res.json({
+        success: true,
+        message,
+        status: desk.status,
+        occupant: desk.userName
+    });
+}
+
+async function handleGetStats(req, res, entities) {
+    const stats = {
+        totalAssets: await Asset.countDocuments({}),
+        assignedAssets: await Asset.countDocuments({ status: 'Assigned' }),
+        totalDesks: await Desk.countDocuments({}),
+        occupiedDesks: await Desk.countDocuments({ status: { $ne: 'Available' } }),
+        totalEmployees: await Employee.countDocuments({})
+    };
+
+    const message = `Here is a summary of the current inventory:
+- **Assets**: ${stats.totalAssets} total (${stats.assignedAssets} assigned)
+- **Workstations**: ${stats.totalDesks} total (${stats.occupiedDesks} occupied/assigned)
+- **Employees**: ${stats.totalEmployees} registered`;
+
+    res.json({
+        success: true,
+        message,
+        stats
     });
 }
 

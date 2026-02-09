@@ -22,7 +22,11 @@ import LicenseDetailPage from './pages/LicenseDetailPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import SoftwareVerificationPage from './pages/SoftwareVerificationPage';
 import SoftwareVerificationListPage from './pages/SoftwareVerificationListPage';
+<<<<<<< main
 import AssetVerificationDetailPage from './pages/AssetVerificationDetailPage';
+=======
+import UserWorkspacePage from './pages/UserWorkspacePage';
+>>>>>>> AIintegration
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -49,13 +53,14 @@ const App: React.FC = () => {
           <Route path="/map" element={<FloorMapPage />} />
           <Route path="/employees" element={<EmployeesPage />} />
 
-        {/* /users now redirects to unified employees page */}
-        <Route path="/users" element={<Navigate to="/employees" replace />} />
-        <Route path="/users/:id" element={<UserDetailsPage />} />
+          {/* /users now redirects to unified employees page */}
+          <Route path="/users" element={<Navigate to="/employees" replace />} />
+          <Route path="/users/:id" element={<UserDetailsPage />} />
 
           {/* User Specific Routes */}
           <Route path="/user/verify" element={<UserVerificationPage />} />
-          <Route path="/user/seat" element={<UserSeatAllocationPage />} />
+          <Route path="/user/seat" element={<UserWorkspacePage />} />
+          <Route path="/user/workspace" element={<UserWorkspacePage />} />
           <Route path="/user/software-verify" element={<SoftwareVerificationPage />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />

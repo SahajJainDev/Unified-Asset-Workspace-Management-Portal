@@ -11,7 +11,7 @@ const FloorMapPage: React.FC = () => {
     const [uploadResult, setUploadResult] = useState<any>(null);
     const [selectedDesk, setSelectedDesk] = useState<Desk | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    
+
     // Edit Form State
     const [editForm, setEditForm] = useState<Partial<Desk>>({});
 
@@ -37,13 +37,13 @@ const FloorMapPage: React.FC = () => {
     // Helper for Project Colors
     const getProjectColor = (project: string) => {
         if (!project) return 'bg-gray-50 border-gray-200';
-        
+
         // Hash the project string to select a color
         let hash = 0;
         for (let i = 0; i < project.length; i++) {
             hash = project.charCodeAt(i) + ((hash << 5) - hash);
         }
-        
+
         const colors = [
             'bg-blue-100 border-blue-300 text-blue-800',
             'bg-green-100 border-green-300 text-green-800',
@@ -54,7 +54,7 @@ const FloorMapPage: React.FC = () => {
             'bg-indigo-100 border-indigo-300 text-indigo-800',
             'bg-teal-100 border-teal-300 text-teal-800'
         ];
-        
+
         return colors[Math.abs(hash) % colors.length];
     };
 
@@ -76,19 +76,19 @@ const FloorMapPage: React.FC = () => {
     // Derived Stats
     const stats = useMemo(() => {
         const total = desks.length;
-        const occupied = desks.filter(d => d.status === 'Occupied').length;
-        const empty = total - occupied;
+        const occupied = desks.filter(d => d.status === 'Occupied' || d.status === 'Permanently Assigned').length;
+        const empty = desks.filter(d => d.status === 'Available').length;
         return { total, occupied, empty };
     }, [desks]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
-        
+
         const file = e.target.files[0];
         const formData = new FormData();
         formData.append('file', file);
 
-        setUploadResult(null); 
+        setUploadResult(null);
         setUploading(true);
         try {
             // New endpoint
@@ -98,7 +98,7 @@ const FloorMapPage: React.FC = () => {
             });
             const data = await res.json();
             setUploadResult(data);
-            fetchDesks(); 
+            fetchDesks();
         } catch (error) {
             console.error(error);
             alert('Upload failed');
@@ -125,21 +125,12 @@ const FloorMapPage: React.FC = () => {
         if (!window.confirm(`Are you sure you want to unassign seat ${selectedDesk.workstationId}?`)) return;
 
         try {
-            const emptyData = {
-                empId: '',
-                userName: '',
-                project: '',
-                manager: '',
-                status: 'Available',
-                modifiedBy: 'Admin' // In real app, get from auth context
-            };
-
-            const res = await fetch(`http://localhost:5000/api/desks/${selectedDesk._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(emptyData)
+            // Use the dedicated hot-desk unassign endpoint which handles both Desk and Booking cleanup
+            const res = await fetch(`http://localhost:5000/api/hotdesk/admin/unassign/${selectedDesk._id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (res.ok) {
                 setIsEditModalOpen(false);
                 fetchDesks();
@@ -155,7 +146,7 @@ const FloorMapPage: React.FC = () => {
 
     const handleSaveEdit = async () => {
         if (!selectedDesk?._id) return;
-        
+
         try {
             const payload = {
                 ...editForm,
@@ -167,7 +158,7 @@ const FloorMapPage: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
+
             if (res.ok) {
                 setIsEditModalOpen(false);
                 fetchDesks();
@@ -214,7 +205,7 @@ const FloorMapPage: React.FC = () => {
                             <label className="flex items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2 shadow-md hover:bg-primary/90 transition-all cursor-pointer">
                                 <span className="material-symbols-outlined">upload_file</span>
                                 <span>{uploading ? 'Uploading...' : 'Upload File'}</span>
-                                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileUpload} disabled={uploading}/>
+                                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileUpload} disabled={uploading} />
                             </label>
                         </div>
                     </div>
@@ -239,11 +230,11 @@ const FloorMapPage: React.FC = () => {
                                     </div>
                                     <div className="p-4 grid grid-cols-4 sm:grid-cols-5 gap-2 content-start flex-1">
                                         {blockDesks.map(desk => {
-                                            const isOccupied = desk.status === 'Occupied';
+                                            const isOccupied = desk.status === 'Occupied' || desk.status === 'Permanently Assigned';
                                             const colorClass = isOccupied ? getProjectColor(desk.project) : 'bg-gray-50 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700';
-                                            
+
                                             return (
-                                                <div 
+                                                <div
                                                     key={desk._id}
                                                     onClick={() => handleSeatClick(desk)}
                                                     className={`
@@ -264,8 +255,8 @@ const FloorMapPage: React.FC = () => {
                                         })}
                                     </div>
                                     <div className="p-2 border-t border-gray-100 dark:border-gray-800 flex text-[10px] text-gray-400 justify-between px-4">
-                                         <span>Occ: {blockDesks.filter(s => s.status === 'Occupied').length}</span>
-                                         <span>Avail: {blockDesks.filter(s => s.status === 'Available').length}</span>
+                                        <span>Occ: {blockDesks.filter(s => s.status !== 'Available').length}</span>
+                                        <span>Avail: {blockDesks.filter(s => s.status === 'Available').length}</span>
                                     </div>
                                 </div>
                             ))}
@@ -302,7 +293,7 @@ const FloorMapPage: React.FC = () => {
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
-                            
+
                             <div className="p-6 overflow-y-auto">
                                 <div className="grid grid-cols-4 gap-4 mb-6">
                                     <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-center">
@@ -351,10 +342,10 @@ const FloorMapPage: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                            
+
                             <div className="p-5 border-t border-gray-100 dark:border-gray-800 flex justify-end bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
-                                <button 
-                                    onClick={() => setUploadResult(null)} 
+                                <button
+                                    onClick={() => setUploadResult(null)}
                                     className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20"
                                 >
                                     Done
@@ -387,10 +378,10 @@ const FloorMapPage: React.FC = () => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">EMP ID (Editable)</label>
-                                        <input 
+                                        <input
                                             className="w-full h-10 rounded-lg border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none"
                                             value={editForm.empId}
-                                            onChange={e => setEditForm({...editForm, empId: e.target.value})}
+                                            onChange={e => setEditForm({ ...editForm, empId: e.target.value })}
                                             placeholder="Enter EMP ID"
                                             autoFocus
                                         />
@@ -399,18 +390,18 @@ const FloorMapPage: React.FC = () => {
 
                                 <div>
                                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1">User Name (Read Only)</label>
-                                    <input 
+                                    <input
                                         className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                                         value={editForm.userName}
                                         readOnly
                                     />
                                 </div>
-                                
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Project (Read Only)</label>
                                         <div className="relative">
-                                            <input 
+                                            <input
                                                 className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                                                 value={editForm.project}
                                                 readOnly
@@ -422,7 +413,7 @@ const FloorMapPage: React.FC = () => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Manager (Read Only)</label>
-                                        <input 
+                                        <input
                                             className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                                             value={editForm.manager}
                                             readOnly
@@ -431,8 +422,8 @@ const FloorMapPage: React.FC = () => {
                                 </div>
                             </div>
                             <div className="p-5 border-t border-gray-100 dark:border-gray-800 flex justify-between bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
-                                {selectedDesk?.status === 'Occupied' ? (
-                                    <button 
+                                {selectedDesk?.status !== 'Available' ? (
+                                    <button
                                         onClick={handleUnassign}
                                         className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
                                     >

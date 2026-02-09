@@ -12,13 +12,13 @@ const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
 
   const navItems = [
     { id: 'verify', label: 'Verify Asset', icon: 'fact_check', path: '/user/verify' },
-    { id: 'seat', label: 'Seat Allocation', icon: 'event_seat', path: '/user/seat' },
+    { id: 'seat', label: 'Workspace', icon: 'event_seat', path: '/user/workspace' },
     { id: 'software-verify', label: 'Software Verification', icon: 'inventory_2', path: '/user/software-verify' },
   ];
 
   const currentTab = activeTab || (
     location.pathname.includes('software-verify') ? 'software-verify' :
-    location.pathname.includes('seat') ? 'seat' : 'verify'
+      location.pathname.includes('seat') ? 'seat' : 'verify'
   );
   const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
@@ -32,10 +32,11 @@ const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
   return (
     <aside className="w-64 shrink-0 flex flex-col h-screen bg-white dark:bg-[#1a2632] border-r border-[#dbe0e6] dark:border-gray-800 transition-colors z-20">
       <div className="p-6 flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate('/user/verify')}>
-        <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-sm">
-          <span className="material-symbols-outlined">person</span>
+        <div className="size-8 bg-transparent rounded-lg flex items-center justify-center overflow-hidden">
+          <img src="/logo.png" alt="AssetTrack Logo" class="w-full h-full object-contain"></img>
+
         </div>
-        <h2 className="text-lg font-bold tracking-tight">Employee Portal</h2>
+        <h2 className="text-lg font-bold tracking-tight">AssetTrack Pro</h2>
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto no-scrollbar">
@@ -66,7 +67,7 @@ const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold truncate">{currentUser.fullName || 'Guest User'}</p>
-            <p className="text-[10px] font-bold text-[#617589] uppercase tracking-tighter">ID: {currentUser.empId || '---'}</p>
+            <p className="text-[10px] font-bold text-[#617589] tracking-tighter">Employee ID: {currentUser.empId || '---'}</p>
           </div>
         </div>
       </div>
