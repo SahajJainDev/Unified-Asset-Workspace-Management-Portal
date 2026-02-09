@@ -8,7 +8,6 @@ const fs = require('fs');
 const path = require('path');
 const { logAssetEvent } = require("../services/historyService");
 const AssetHistory = require("../models/AssetHistory");
-const { logActivity } = require('../utils/activityLogger');
 
 // Configure Multer
 const storage = multer.diskStorage({

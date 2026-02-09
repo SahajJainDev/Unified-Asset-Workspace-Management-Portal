@@ -12,7 +12,7 @@ const UserSidebar: React.FC<UserSidebarProps> = ({ activeTab }) => {
 
   const navItems = [
     { id: 'verify', label: 'Verify Asset', icon: 'fact_check', path: '/user/verify' },
-    { id: 'seat', label: 'Seat Allocation', icon: 'event_seat', path: '/user/seat' },
+    { id: 'seat', label: 'Workspace', icon: 'event_seat', path: '/user/workspace' },
     { id: 'software-verify', label: 'Software Verification', icon: 'inventory_2', path: '/user/software-verify' },
   ];
 

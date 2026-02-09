@@ -29,7 +29,7 @@ const deskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Available', 'Occupied'],
+    enum: ['Available', 'Occupied', 'Permanently Assigned'],
     default: 'Available'
   },
   isActive: {

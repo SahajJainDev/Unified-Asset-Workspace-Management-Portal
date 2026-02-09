@@ -63,7 +63,7 @@ export interface Desk {
   userName?: string;
   project?: string;
   manager?: string;
-  status: 'Available' | 'Occupied';
+  status: 'Available' | 'Occupied' | 'Permanently Assigned';
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
