@@ -8,7 +8,6 @@ const fs = require('fs');
 const path = require('path');
 const { logAssetEvent } = require("../services/historyService");
 const AssetHistory = require("../models/AssetHistory");
-const { logActivity } = require('../utils/activityLogger');
 
 // Configure Multer
 const storage = multer.diskStorage({
@@ -26,24 +25,26 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const AssetCategory = require('../models/AssetCategory');
+
 // Middleware for validating asset data
-const validateAssetData = (req, res, next) => {
+const validateAssetData = async (req, res, next) => {
   const { assetName, assetType, status } = req.body;
 
   if (!assetName || typeof assetName !== 'string' || assetName.trim().length === 0) {
     return res.status(400).json({ message: 'Asset name is required and must be a non-empty string' });
   }
 
-  const validAssetTypes = ['Laptop', 'Monitor', 'Mouse', 'Keyboard', 'Smartphone', 'Tablet', 'Other'];
-  if (assetType && !validAssetTypes.includes(assetType)) {
-    // Allow it to pass if not provided (will use default), but if provided must be valid.
-    // However the strictly typed requirement suggests we should validate.
-    // Existing code enforced it, so we keep it. but 'default' is 'Laptop' in schema.
-    return res.status(400).json({ message: 'Invalid asset type' });
+  if (assetType) {
+    // Validate against configured categories from DB
+    const validCategories = await AssetCategory.find({ isActive: true }).select('name');
+    const validNames = validCategories.map(c => c.name);
+    if (validNames.length > 0 && !validNames.includes(assetType)) {
+      return res.status(400).json({ message: `Invalid asset type '${assetType}'. Valid types: ${validNames.join(', ')}` });
+    }
   }
 
   const validStatuses = ['IN USE', 'STORAGE', 'REPAIR', 'Available', 'Assigned', 'Not Available', 'Damaged'];
-  // Updated to include new statuses
   if (!status || !validStatuses.includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
   }
