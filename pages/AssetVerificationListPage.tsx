@@ -346,7 +346,7 @@ const AssetVerificationListPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-black text-[#111418] dark:text-white">{summaries.length}</p>
-                  <p className="text-xs text-[#617589]">Total Submissions</p>
+                  <p className="text-xs text-[#617589]">Total Employees</p>
                 </div>
               </div>
             </div>
@@ -493,10 +493,20 @@ const AssetVerificationListPage: React.FC = () => {
                         <td colSpan={10} className="px-6 py-16 text-center">
                           <div className="flex flex-col items-center gap-3">
                             <div className="size-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                              <span className="material-symbols-outlined text-3xl text-gray-400">fact_check</span>
+                              <span className="material-symbols-outlined text-3xl text-gray-400">{statusFilter === 'Verified' ? 'verified' : statusFilter === 'Discrepant' ? 'error' : statusFilter === 'Pending' ? 'schedule' : 'fact_check'}</span>
                             </div>
-                            <p className="text-sm font-bold text-[#617589]">No verification records found</p>
-                            <p className="text-xs text-gray-400">Employees will appear here once they submit their asset verification</p>
+                            <p className="text-sm font-bold text-[#617589]">
+                              {statusFilter === 'All' ? 'No employees with assigned assets' :
+                               statusFilter === 'Pending' ? 'No pending verifications' :
+                               statusFilter === 'Verified' ? 'No fully verified employees yet' :
+                               'No discrepancies found'}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {statusFilter === 'All' ? 'Employees with assigned assets will appear here automatically' :
+                               statusFilter === 'Pending' ? 'All employees have submitted their verification' :
+                               statusFilter === 'Verified' ? 'Employees will appear here once all their assets are verified' :
+                               'Great! No discrepancies have been found'}
+                            </p>
                           </div>
                         </td>
                       </tr>

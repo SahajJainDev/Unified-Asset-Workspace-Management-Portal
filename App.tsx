@@ -11,6 +11,7 @@ import VerificationPage from './pages/VerificationPage';
 import AssetVerificationListPage from './pages/AssetVerificationListPage';
 import QuixrLogsPage from './pages/QuixrLogsPage';
 import ReportsPage from './pages/ReportsPage';
+import AuditReportPage from './pages/AuditReportPage';
 import UploadPage from './pages/UploadPage';
 import FloorMapPage from './pages/FloorMapPage';
 import EmployeesPage from './pages/EmployeesPage';
@@ -46,6 +47,7 @@ const App: React.FC = () => {
           <Route path="/software-verifications" element={<SoftwareVerificationListPage />} />
           <Route path="/Quixr-logs" element={<QuixrLogsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports/audit" element={<AuditReportPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/map" element={<FloorMapPage />} />
           <Route path="/employees" element={<EmployeesPage />} />

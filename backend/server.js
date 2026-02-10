@@ -28,6 +28,7 @@ app.use('/api/software', require('./routes/softwareRoutes'));
 app.use('/api/verifications', require('./routes/verificationRoutes'));
 app.use('/api/verification-cycles', require('./routes/verificationCycleRoutes'));
 app.use('/api/software-verification', require('./routes/softwareVerificationRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/actions', require('./routes/actionRoutes'));
 app.use('/api/hotdesk', require('./routes/hotDeskRoutes'));

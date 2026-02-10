@@ -335,6 +335,11 @@ class ApiService {
     return this.request<DashboardStats>('/dashboard/stats');
   }
 
+  // Audit Report
+  async getAuditReport(): Promise<any> {
+    return this.request<any>('/reports/audit');
+  }
+
   // Reports CRUD operations
   async getReports(): Promise<Report[]> {
     return this.request<Report[]>('/reports');
