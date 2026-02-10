@@ -78,10 +78,10 @@ const SoftwareVerificationListPage: React.FC = () => {
       <Sidebar activeTab="software-verifications" />
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
-        <div className="p-6">
+        <div className="p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-2xl font-bold dark:text-white">Software Verifications</h2>
+              <h2 className="text-[#111418] dark:text-white text-3xl font-black tracking-tight leading-tight">Software Verifications</h2>
               <p className="text-sm text-gray-500">View all software scan submissions</p>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -156,9 +156,9 @@ const SoftwareVerificationListPage: React.FC = () => {
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">Rows per page:</span>
-                  <select 
-                    value={limit} 
-                    onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} 
+                  <select
+                    value={limit}
+                    onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
                     className="h-9 px-3 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer hover:border-gray-300 dark:hover:border-gray-600"
                   >
                     <option value={10}>10</option>
@@ -174,17 +174,17 @@ const SoftwareVerificationListPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button 
-                  disabled={page <= 1} 
-                  onClick={() => setPage(1)} 
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(1)}
                   className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
                   title="First page"
                 >
                   <span className="material-symbols-outlined text-[18px]">first_page</span>
                 </button>
-                <button 
-                  disabled={page <= 1} 
-                  onClick={() => setPage(page - 1)} 
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
                   className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
                   title="Previous page"
                 >
@@ -195,17 +195,17 @@ const SoftwareVerificationListPage: React.FC = () => {
                   <span className="text-sm text-gray-400">/</span>
                   <span className="text-sm text-gray-600 dark:text-gray-400">{totalPages}</span>
                 </div>
-                <button 
-                  disabled={page >= totalPages} 
-                  onClick={() => setPage(page + 1)} 
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
                   className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
                   title="Next page"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
-                <button 
-                  disabled={page >= totalPages} 
-                  onClick={() => setPage(totalPages)} 
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(totalPages)}
                   className="h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-900 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 transition-all flex items-center gap-1"
                   title="Last page"
                 >
@@ -229,7 +229,7 @@ const SoftwareVerificationListPage: React.FC = () => {
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-              
+
               <div className="p-6 overflow-y-auto flex-1">
                 {/* System Info */}
                 <div className="mb-6">

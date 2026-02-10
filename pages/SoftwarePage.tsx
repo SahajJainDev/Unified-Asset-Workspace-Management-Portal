@@ -92,7 +92,7 @@ const SoftwarePage: React.FC = () => {
       <Sidebar activeTab="software" />
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
-        <div className="p-8 space-y-8 max-w-[1200px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-wrap justify-between items-end gap-3 mb-6">
             <div className="flex flex-col gap-2">
               <p className="text-[#111418] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Software Management</p>

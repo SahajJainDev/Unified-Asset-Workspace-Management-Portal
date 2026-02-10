@@ -179,7 +179,7 @@ const AssetVerificationListPage: React.FC = () => {
       <Sidebar activeTab="verification-list" />
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
-        <div className="max-w-[1200px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-[1400px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Page Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -405,18 +405,16 @@ const AssetVerificationListPage: React.FC = () => {
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                      statusFilter === status
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === status
                         ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                         : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
+                      }`}
                   >
                     <span>{status}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      statusFilter === status
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === status
                         ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                         : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                    }`}>{statusCounts[status] || 0}</span>
+                      }`}>{statusCounts[status] || 0}</span>
                   </button>
                 ))}
               </div>

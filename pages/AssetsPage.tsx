@@ -57,12 +57,12 @@ const AssetsPage: React.FC = () => {
         u: (asset.employee && asset.employee.name) || asset.assignedTo || 'Unassigned',
         s: asset.status,
         sc: asset.status === 'Assigned' ? 'purple' :
-            asset.status === 'Available' ? 'emerald' :
+          asset.status === 'Available' ? 'emerald' :
             asset.status === 'IN USE' ? 'green' :
-            asset.status === 'STORAGE' ? 'slate' :
-            asset.status === 'REPAIR' ? 'amber' :
-            asset.status === 'Damaged' ? 'red' :
-            asset.status === 'Not Available' ? 'rose' : 'blue'
+              asset.status === 'STORAGE' ? 'slate' :
+                asset.status === 'REPAIR' ? 'amber' :
+                  asset.status === 'Damaged' ? 'red' :
+                    asset.status === 'Not Available' ? 'rose' : 'blue'
       }));
       setAssets(mappedAssets);
       // Clear selection on refresh
@@ -243,7 +243,7 @@ const AssetsPage: React.FC = () => {
       <Sidebar activeTab="assets" />
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
-        <div className="max-w-[1200px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-[1400px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-[#111418] dark:text-white text-3xl font-black tracking-tight leading-tight">Asset Master List</h2>
@@ -320,123 +320,107 @@ const AssetsPage: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setStatusFilter('All')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'All'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'All'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>All</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'All' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'All'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['All']}</span>
+                    }`}>{statusCounts['All']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('Available')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'Available'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'Available'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>Available</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'Available' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'Available'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['Available']}</span>
+                    }`}>{statusCounts['Available']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('Assigned')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'Assigned'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'Assigned'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>Assigned</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'Assigned' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'Assigned'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['Assigned']}</span>
+                    }`}>{statusCounts['Assigned']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('IN USE')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'IN USE'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'IN USE'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>In Use</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'IN USE' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'IN USE'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['IN USE']}</span>
+                    }`}>{statusCounts['IN USE']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('STORAGE')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'STORAGE'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'STORAGE'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>Storage</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'STORAGE' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'STORAGE'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['STORAGE']}</span>
+                    }`}>{statusCounts['STORAGE']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('REPAIR')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'REPAIR'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'REPAIR'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>Repair</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'REPAIR' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'REPAIR'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['REPAIR']}</span>
+                    }`}>{statusCounts['REPAIR']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('Damaged')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'Damaged'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'Damaged'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>Damaged</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'Damaged' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'Damaged'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['Damaged']}</span>
+                    }`}>{statusCounts['Damaged']}</span>
                 </button>
                 <button
                   onClick={() => setStatusFilter('Not Available')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === 'Not Available'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${statusFilter === 'Not Available'
                       ? 'bg-[#111418] dark:bg-white text-white dark:text-[#111418] shadow-sm'
                       : 'bg-white dark:bg-gray-800 text-[#617589] dark:text-gray-400 border border-[#dbe0e6] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <span>Not Available</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    statusFilter === 'Not Available' 
-                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]' 
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusFilter === 'Not Available'
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111418]'
                       : 'bg-gray-100 dark:bg-gray-700 text-[#617589] dark:text-gray-400'
-                  }`}>{statusCounts['Not Available']}</span>
+                    }`}>{statusCounts['Not Available']}</span>
                 </button>
               </div>
             </div>
@@ -574,15 +558,14 @@ const AssetsPage: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm">{asset.u}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              asset.sc === 'purple' ? 'bg-purple-100 text-purple-700' :
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${asset.sc === 'purple' ? 'bg-purple-100 text-purple-700' :
                               asset.sc === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
-                              asset.sc === 'green' ? 'bg-green-100 text-green-700' :
-                              asset.sc === 'slate' ? 'bg-slate-100 text-slate-600' :
-                              asset.sc === 'amber' ? 'bg-amber-100 text-amber-700' :
-                              asset.sc === 'red' ? 'bg-red-100 text-red-700' :
-                              asset.sc === 'rose' ? 'bg-rose-100 text-rose-600' :
-                                'bg-blue-100 text-blue-700'
+                                asset.sc === 'green' ? 'bg-green-100 text-green-700' :
+                                  asset.sc === 'slate' ? 'bg-slate-100 text-slate-600' :
+                                    asset.sc === 'amber' ? 'bg-amber-100 text-amber-700' :
+                                      asset.sc === 'red' ? 'bg-red-100 text-red-700' :
+                                        asset.sc === 'rose' ? 'bg-rose-100 text-rose-600' :
+                                          'bg-blue-100 text-blue-700'
                             }`}>{asset.s}</span>
                         </td>
                         <td className="px-6 py-4 text-right">

@@ -30,7 +30,7 @@ const QuixrLogsPage: React.FC = () => {
       <Sidebar activeTab="Quixr-logs" />
       <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         <Header />
-        <div className="max-w-[1200px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-[1400px] w-full mx-auto px-6 py-8 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3 mb-1">

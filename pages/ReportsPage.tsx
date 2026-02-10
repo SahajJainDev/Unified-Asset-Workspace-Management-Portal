@@ -18,7 +18,7 @@ const ReportsPage: React.FC = () => {
       <Sidebar activeTab="reports" />
       <main className="flex-1 flex flex-col min-w-0">
         <Header />
-        <div className="p-8 space-y-8 max-w-[1200px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-between items-end mb-8">
             <div>
               <h1 className="text-4xl font-black">Advanced Reports</h1>
@@ -31,21 +31,20 @@ const ReportsPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reports.map((rep, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="bg-white dark:bg-[#1a2632] p-6 rounded-2xl border border-[#dbe0e6] dark:border-gray-800 flex flex-col h-72 hover:shadow-xl hover:-translate-y-1 transition-all group"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className={`p-3 rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors`}>
                     <span className="material-symbols-outlined">{rep.i}</span>
                   </div>
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded tracking-wider ${
-                    rep.c === 'blue' ? 'bg-blue-100 text-blue-700' :
-                    rep.c === 'green' ? 'bg-green-100 text-green-700' :
-                    rep.c === 'red' ? 'bg-red-100 text-red-700' :
-                    rep.c === 'amber' ? 'bg-amber-100 text-amber-700' :
-                    'bg-indigo-100 text-indigo-700'
-                  }`}>{rep.s}</span>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded tracking-wider ${rep.c === 'blue' ? 'bg-blue-100 text-blue-700' :
+                      rep.c === 'green' ? 'bg-green-100 text-green-700' :
+                        rep.c === 'red' ? 'bg-red-100 text-red-700' :
+                          rep.c === 'amber' ? 'bg-amber-100 text-amber-700' :
+                            'bg-indigo-100 text-indigo-700'
+                    }`}>{rep.s}</span>
                 </div>
                 <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">{rep.t}</h3>
                 <p className="text-sm text-[#617589] flex-grow leading-relaxed">{rep.d}</p>

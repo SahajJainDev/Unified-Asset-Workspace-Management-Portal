@@ -177,10 +177,10 @@ const FloorMapPage: React.FC = () => {
             <Sidebar activeTab="map" />
             <main className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
                 <Header />
-                <div className="p-6">
+                <div className="p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                         <div>
-                            <h2 className="text-2xl font-bold dark:text-white">Floor Map Dashboard</h2>
+                            <h2 className="text-[#111418] dark:text-white text-3xl font-black tracking-tight leading-tight">Floor Map Dashboard</h2>
                             <p className="text-sm text-gray-500">Manage seat assignments visually</p>
                         </div>
                         <div className="flex gap-4 items-center">
