@@ -240,7 +240,7 @@ router.get('/summary', async (req, res) => {
                 employeeId: empId,
                 employeeName: employeeName || empId,
                 department,
-                lastVerifiedDate: lastVerifiedDate || new Date().toISOString(),
+                lastVerifiedDate,
                 totalAssigned,
                 totalAssets: totalVerified,
                 verified,
