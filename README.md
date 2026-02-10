@@ -1,20 +1,36 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AssetTrack Pro
 
-# Run and deploy your AI Studio app
+A unified asset and workspace management portal built with a modern tech stack.
 
-This contains everything you need to run your app locally.
+## 🚀 Tech Stack
 
-View your app in AI Studio: https://ai.studio/apps/drive/1hz9Rsv9uuxui_I6VPkyM8F38dr848L0c
+- **Frontend:** React, Vite, Tailwind CSS
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB
+- **AI Integration:** Google Gemini (GenAI)
 
-## Run Locally
+## ✨ Key Features
 
-**Prerequisites:**  Node.js
+- **Asset Management:** Efficiently track and manage hardware and software assets.
+- **Workspace Mapping:** Visual mapping of assets to physical workspaces.
+- **Workflow Automation:** Customizable workflows with multi-select conditions and authority chaining.
+- **AI Chatbot:** Integrated AI assistant for quick queries and support.
+- **Activity Logs:** Comprehensive audit trails for all asset movements and updates.
+- **System Integration:** PowerShell script support for automated system info collection.
 
+## 🛠️ Getting Started
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
+
+2.  **Run Development Server:**
+    ```bash
+    npm run dev
+    ```
+
+3.  **Start Backend:**
+    ```bash
+    npm run dev:backend
+    ```
